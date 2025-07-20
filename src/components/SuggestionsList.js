@@ -1,0 +1,88 @@
+import React, { useEffect, useRef } from 'react';
+import { useTerminal } from '../context/TerminalContext';
+
+const accesMap = new Map();
+accesMap.set(0, { 'color': '#777777ff', 'text': 'Everyone' });
+accesMap.set(1, { 'color': '#54de31ff', 'text': 'Subscriber' });
+accesMap.set(2, { 'color': '#317cdeff', 'text': 'Regular' });
+accesMap.set(3, { 'color': '#DE3163ff', 'text': 'Vip' });
+accesMap.set(4, { 'color': '#deb031ff', 'text': 'Moderator' });
+accesMap.set(5, { 'color': '#de5431ff', 'text': 'Super Moderator' });
+accesMap.set(6, { 'color': '#de3131ff', 'text': 'Broadcaster' });
+
+function SuggestionsList({ suggestions, activeSuggestionIndex, onSelect }) {
+    const { state } = useTerminal();
+    const activeRef = useRef(null);
+
+    useEffect(() => {
+        // Scroll to active suggestion when it changes
+        if (activeRef.current) {
+            activeRef.current.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest'
+            });
+        }
+    }, [activeSuggestionIndex]);
+
+    return (
+        <ul style={{ width: '80vw', maxHeight: '70vh' }} className="absolute bottom-full mb-1 overflow-auto bg-gray-800 border border-gray-700 rounded-md shadow-lg z-10">
+            {suggestions.map(({ cmd: suggestion, properties }, index) => {
+                const commandInfo = state.availableCommands[suggestion];
+                const isActive = index === activeSuggestionIndex;
+                if (!properties)
+                    return (
+                        <li
+                            key={index}
+                            className={`px-3 py-2 cursor-pointer ${isActive ? 'bg-white' : 'hover:bg-gray-700'} ${isActive ? 'text-black' : 'hover:bg-gray-700'}`}
+                            onClick={() => onSelect(suggestion)}
+                            ref={isActive ? activeRef : null}
+                        >
+                            <div className="flex items-center">
+                                <span className="font-mono">{suggestion} </span>
+                                {commandInfo && (
+                                    <span className={`${isActive ? 'text-blue-900' : 'text-blue-400 hover:bg-gray-700'} ml-2 truncate`}>
+                                        {commandInfo.description}
+                                    </span>
+                                )}
+                            </div>
+                        </li>
+                    );
+                else
+                    return (
+                        <li
+                            key={index}
+                            className={`px-3 py-2 cursor-pointer ${isActive ? 'bg-white' : 'hover:bg-gray-700'} ${isActive ? 'text-black' : 'hover:bg-gray-700'}`}
+                            onClick={() => onSelect(suggestion)}
+                            ref={isActive ? activeRef : null}
+                        >
+                            <div className="flex items-center">
+                                <span className='mr-2' style={{ color: properties.color }}>
+                                    [{properties.platform}]
+                                </span>
+                                <span className='mr-2' style={{ color: accesMap.get(properties.level).color }}>{accesMap.get(properties.level).text}</span>
+                                <span className="font-mono">{suggestion} </span>
+                                {
+                                    properties.aliases && (
+                                        <div>
+                                            {properties.aliases.map((a) => {
+                                                return <span className='ml-2'>{a}</span>
+                                            })}
+                                        </div>
+                                    )
+                                }
+                                {properties && (
+                                    <>
+                                        <span className={`${isActive ? 'text-blue-900' : 'text-blue-400 hover:bg-gray-700'} ml-2 truncate`}>
+                                            {properties.description}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                        </li>
+                    );
+            })}
+        </ul>
+    );
+}
+
+export default SuggestionsList;

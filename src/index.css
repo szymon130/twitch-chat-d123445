@@ -1,13 +1,105 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+        /* Apply Inter font globally */
+        body {
+          font-family: 'Inter', sans-serif;
+        }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
+        /* Define Twitch-like colors for scrollbars */
+        /* These are approximations based on Twitch's dark theme */
+        :root {
+          --twitch-dark-bg: #18181b;
+          /* Main background, similar to Twitch's dark mode */
+          --twitch-purple: #9147ff;
+          /* Twitch's signature purple */
+          --twitch-light-purple: #a970ff;
+          /* A slightly lighter purple for highlights */
+          --twitch-gray-light: #2c2c31;
+          /* Lighter gray for scrollbar track */
+          --twitch-gray-dark: #1f1f23;
+          /* Darker gray for scrollbar thumb */
+        }
+
+        /* Global Scrollbar Styles */
+        /* Target WebKit browsers (Chrome, Safari, Edge) for custom scrollbars */
+
+        /* Overall scrollbar width/height */
+        ::-webkit-scrollbar {
+          width: 12px;
+          /* For vertical scrollbars */
+          height: 12px;
+          /* For horizontal scrollbars */
+        }
+
+        /* Scrollbar track (the background area) */
+        ::-webkit-scrollbar-track {
+          background: var(--twitch-gray-light);
+          /* Light gray/dark purple for the track */
+          border-radius: 10px;
+          /* Rounded corners for the track */
+        }
+
+        /* Scrollbar thumb (the draggable part) */
+        ::-webkit-scrollbar-thumb {
+          background: var(--twitch-purple);
+          /* Twitch purple for the thumb */
+          border-radius: 10px;
+          /* Rounded corners for the thumb */
+          border: 3px solid var(--twitch-gray-light);
+          /* A border to create a gap from the track */
+        }
+
+        /* Scrollbar thumb on hover */
+        ::-webkit-scrollbar-thumb:hover {
+          background: var(--twitch-light-purple);
+          /* Lighter purple on hover */
+        }
+
+        /* Scrollbar corner (where vertical and horizontal scrollbars meet) */
+        ::-webkit-scrollbar-corner {
+          background: var(--twitch-dark-bg);
+          /* Match the main background */
+        }
+
+        /* Example container to demonstrate scrollbars */
+        .scroll-container {
+          width: 80%;
+          max-width: 600px;
+          height: 400px;
+          margin: 50px auto;
+          padding: 20px;
+          background-color: var(--twitch-dark-bg);
+          color: #e0e0e0;
+          /* Light text color */
+          border-radius: 15px;
+          overflow: auto;
+          /* This makes the scrollbar appear */
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+          resize: both;
+          /* Allows resizing to test scrollbars */
+          min-width: 300px;
+          min-height: 200px;
+        }
+
+        .content {
+          white-space: pre-wrap;
+          /* Preserve whitespace and allow wrapping */
+          word-wrap: break-word;
+          /* Break long words */
+        }
+
+        body {
+          margin: 0;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+            'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+            sans-serif;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+        }
+
+        code {
+          font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+            monospace;
+        }
+
+        @tailwind base;
+        @tailwind components;
+        @tailwind utilities;
