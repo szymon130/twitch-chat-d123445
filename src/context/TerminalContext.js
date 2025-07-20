@@ -83,7 +83,7 @@ const initialState = {
     autoConnect: false
 };
 
-const actions = {
+export const actions = {
     ADD_LINE: 'ADD_LINE',
     SET_COMMAND: 'SET_COMMAND',
     ADD_TO_HISTORY: 'ADD_TO_HISTORY',
@@ -146,25 +146,26 @@ function reducer(state, action) {
                 }
             };
 
-        case 'DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL':
-            // Merge new channel commands with existing ones
-            const availableCommandsChannel = {
-                ...state.availableCommandsChannel
-            };
-            if (actions.payload
-                && availableCommandsChannel[actions.payload])
-                delete availableCommandsChannel[actions.payload]
+        case 'DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL': {
+            // Create a copy of the current state
+            const updatedCommands = { ...state.availableCommandsChannel };
+
+            // Remove the specified channel if it exists
+            if (action.payload && updatedCommands[action.payload]) {
+                delete updatedCommands[action.payload];
+            }
+
             return {
                 ...state,
-                availableCommandsChannel: {
-                    ...availableCommandsChannel
-                }
+                availableCommandsChannel: updatedCommands
             };
+        }
 
         case 'SET_ACTIVE_CHANNEL':
             return { ...state, activeChannel: action.payload };
 
         default:
+            console.error("Reducer got invalid action type: " + action.type + "\n - No changes to state were done.");
             return state;
     }
 }

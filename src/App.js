@@ -5,6 +5,7 @@ import WebSocketComponent from './components/WebSocket/WebSocketComponent';
 import handleFnCall from './fnHandlers/_index';
 import { TerminalProvider } from './context/TerminalContext';
 import useTerminalActions from './hooks/useTerminalActions';
+import { actions } from './context/TerminalContext';
 
 function TerminalApp() {
   const terminalEndRef = useRef(null);
@@ -20,7 +21,7 @@ function TerminalApp() {
     const urlParams = new URLSearchParams(window.location.search);
     const channel = urlParams.get('channel');
     if (channel) {
-      dispatch({ type: 'SET_ACTIVE_CHANNEL', payload: channel });
+      dispatch({ type: actions.SET_ACTIVE_CHANNEL, payload: channel });
       setInitialAutoConnect(true); // Set flag for auto-connect
     }
   }, [dispatch]);
@@ -34,7 +35,7 @@ function TerminalApp() {
   useEffect(() => {
     const handleClick = (e) => {
       if (formRef.current && !formRef.current.contains(e.target)) {
-        dispatch({ type: 'SET_SHOW_SUGGESTIONS', payload: false });
+        dispatch({ type: actions.SET_SHOW_SUGGESTIONS, payload: false });
       }
       inputRef.current?.focus();
     };
@@ -49,13 +50,13 @@ function TerminalApp() {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         dispatch({
-          type: 'SET_ACTIVE_SUGGESTION',
+          type: actions.SET_ACTIVE_SUGGESTION,
           payload: (state.activeSuggestionIndex + 1) % state.suggestions.length
         });
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         dispatch({
-          type: 'SET_ACTIVE_SUGGESTION',
+          type: actions.SET_ACTIVE_SUGGESTION,
           payload: (state.activeSuggestionIndex - 1 + state.suggestions.length) %
             state.suggestions.length
         });
@@ -63,29 +64,29 @@ function TerminalApp() {
         e.preventDefault();
         const parts = state.command.split(' ');
         parts[parts.length - 1] = state.suggestions[state.activeSuggestionIndex].cmd;
-        dispatch({ type: 'SET_COMMAND', payload: parts.join(' ') + ' ' });
-        dispatch({ type: 'SET_SHOW_SUGGESTIONS', payload: false });
+        dispatch({ type: actions.SET_COMMAND, payload: parts.join(' ') + ' ' });
+        dispatch({ type: actions.SET_SHOW_SUGGESTIONS, payload: false });
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        dispatch({ type: 'SET_SHOW_SUGGESTIONS', payload: false });
+        dispatch({ type: actions.SET_SHOW_SUGGESTIONS, payload: false });
       }
     } else {
       if (e.key === 'ArrowUp') {
         e.preventDefault();
         if (state.historyIndex < state.commandHistory.length - 1) {
           const newIndex = state.historyIndex + 1;
-          dispatch({ type: 'SET_HISTORY_INDEX', payload: newIndex });
-          dispatch({ type: 'SET_COMMAND', payload: state.commandHistory[newIndex] });
+          dispatch({ type: actions.SET_HISTORY_INDEX, payload: newIndex });
+          dispatch({ type: actions.SET_COMMAND, payload: state.commandHistory[newIndex] });
         }
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         if (state.historyIndex > 0) {
           const newIndex = state.historyIndex - 1;
-          dispatch({ type: 'SET_HISTORY_INDEX', payload: newIndex });
-          dispatch({ type: 'SET_COMMAND', payload: state.commandHistory[newIndex] });
+          dispatch({ type: actions.SET_HISTORY_INDEX, payload: newIndex });
+          dispatch({ type: actions.SET_COMMAND, payload: state.commandHistory[newIndex] });
         } else {
-          dispatch({ type: 'SET_HISTORY_INDEX', payload: -1 });
-          dispatch({ type: 'SET_COMMAND', payload: '' });
+          dispatch({ type: actions.SET_HISTORY_INDEX, payload: -1 });
+          dispatch({ type: actions.SET_COMMAND, payload: '' });
         }
       }
     }
@@ -98,7 +99,7 @@ function TerminalApp() {
       onOpen={(event) => {
         addMessage('success', 'WebSocket connection established');
         dispatch({
-          type: 'SET_AVAILABLE_COMMANDS',
+          type: actions.SET_AVAILABLE_COMMANDS,
           payload: {
             ...state.availableCommands,
             disconnect: { description: 'Disconnects from the server.', params: [] },
@@ -132,7 +133,7 @@ function TerminalApp() {
       onClose={(event) => {
         addMessage('system', `WebSocket connection closed: ${event.reason || 'Unknown reason'}`);
         const { disconnect, ping, echo, login, ...rest } = state.availableCommands;
-        dispatch({ type: 'SET_AVAILABLE_COMMANDS', payload: rest });
+        dispatch({ type: actions.SET_AVAILABLE_COMMANDS, payload: rest });
       }}
       onError={(error) => {
         addMessage('error', `WebSocket error: ${error.message}`);
@@ -172,8 +173,8 @@ function TerminalApp() {
                   onSelect={(suggestion) => {
                     const parts = state.command.split(' ');
                     parts[parts.length - 1] = suggestion;
-                    dispatch({ type: 'SET_COMMAND', payload: parts.join(' ') + ' ' });
-                    dispatch({ type: 'SET_SHOW_SUGGESTIONS', payload: false });
+                    dispatch({ type: actions.SET_COMMAND, payload: parts.join(' ') + ' ' });
+                    dispatch({ type: actions.SET_SHOW_SUGGESTIONS, payload: false });
                   }}
                 />
               )}

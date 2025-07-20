@@ -74,7 +74,7 @@ export default function useTerminalActions() {
                 if (args.length > 0 && args[0].startsWith('#')) {
                     const channel = args[0].substring(1);
                     if (typeof channel === 'string')
-                        dispatch({ type: 'SET_ACTIVE_CHANNEL', payload: channel });
+                        dispatch({ type: actions.SET_ACTIVE_CHANNEL, payload: channel });
                 }
             // Fall through to default case to send the message
             default:

@@ -1,3 +1,5 @@
+import {actions} from '../context/TerminalContext'
+
 export default function availableCommands(data, { dispatch, state }) { // <--- Destructure state from context
     const dataProcessed = {};
 
@@ -7,7 +9,7 @@ export default function availableCommands(data, { dispatch, state }) { // <--- D
     
 
     dispatch({
-        type: 'SET_AVAILABLE_COMMANDS',
+        type: actions.SET_AVAILABLE_COMMANDS,
         payload: {
             ...state.availableCommands, // Now state is defined
             ...dataProcessed,
