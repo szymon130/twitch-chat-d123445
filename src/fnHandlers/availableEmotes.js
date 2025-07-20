@@ -1,4 +1,8 @@
-export default function availableEmotes(data, { addMessage }) {
-    console.log(data)
-    // addMessage('system', `Joined channel ${data}`);
+import { actions } from '../context/TerminalContext';
+
+export default function availableEmotes(data, { dispatch, state }) {
+    dispatch({
+        type: actions.SET_AVAILABLE_EMOTES,
+        payload: data
+    });
 }

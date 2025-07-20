@@ -27,7 +27,7 @@ const TerminalLine = ({ type, content, index }) => {
     none: ''
   };
 
-  const icon = type === 'command' ? <span className="text-cyan-400 mr-2">$</span> : <MessageIcon type={type} />;
+  const icon = type === 'command' ? <span className="text-cyan-400">$</span> : <MessageIcon type={type} />;
   return (
     <div
       className={`terminal-line text-sm ${typeClass[type]} break-all`}

@@ -8,13 +8,57 @@ import useTerminalActions from './hooks/useTerminalActions';
 import { actions } from './context/TerminalContext';
 
 function TerminalApp() {
+  const { state, addMessage, executeCommand, handleInputChange, dispatch } =
+    useTerminalActions();
+
   const terminalEndRef = useRef(null);
   const inputRef = useRef(null);
   const formRef = useRef(null);
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+    }
+  }, [state.command]);
   const [initialAutoConnect, setInitialAutoConnect] = useState(false);
 
-  const { state, addMessage, executeCommand, handleInputChange, dispatch } =
-    useTerminalActions();
+  // Add character count state
+  const [charState, setCharState] = useState({
+    current: 0,
+    max: 500,
+    exceeded: false
+  });
+
+  // Add this effect to handle textarea auto-resizing and character counting
+  useEffect(() => {
+    if (inputRef.current) {
+      // Auto-resize
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+
+      // Character counting
+      const command = state.command;
+      let charCount = command.length;
+
+      // Adjust for /say commands
+      if (command.startsWith('/say') && state.activeChannel) {
+        const prefix = `/say #${state.activeChannel} `;
+        if (command.startsWith(prefix)) {
+          charCount = command.substring(prefix.length).length;
+        }
+      }
+
+      setCharState({
+        current: charCount,
+        max: 500,
+        exceeded: charCount > 500
+      });
+    }
+  }, [state.command, state.activeChannel]);
+
+  // Create a ref for the latest state
+  const stateRef = useRef(state);
+  stateRef.current = state; // Update ref on every render
 
   // Check for channel query parameter on load
   useEffect(() => {
@@ -88,6 +132,10 @@ function TerminalApp() {
           dispatch({ type: actions.SET_HISTORY_INDEX, payload: -1 });
           dispatch({ type: actions.SET_COMMAND, payload: '' });
         }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const submitButton = document.getElementById('submit-button');
+        if (submitButton) submitButton.click();
       }
     }
   };
@@ -117,7 +165,11 @@ function TerminalApp() {
             const wasHandled = handleFnCall(
               msg.function,
               msg.data,
-              { addMessage, dispatch, state }
+              {
+                addMessage,
+                dispatch,
+                state: stateRef.current // Use current state from ref
+              }
             );
 
             if (!wasHandled) {
@@ -157,7 +209,7 @@ function TerminalApp() {
             </div>
 
             {/* Output */}
-            <div id="terminal-window" className="flex-grow overflow-y-auto">
+            <div id="terminal-window" className="flex-grow overflow-y-auto" style={{ overflowX: 'hidden' }}>
               {state.lines.map((line, index) => (
                 <TerminalLine key={index} type={line.type} content={line.content} index={index} />
               ))}
@@ -186,20 +238,29 @@ function TerminalApp() {
                 className="flex items-center font-mono text-sm"
                 id="input-form"
               >
-                <span className="text-cyan-400 mr-2">$</span>
-                <input
-                  id="input-form-input"
-                  ref={inputRef}
-                  type="text"
-                  value={state.command}
-                  onChange={(e) => handleInputChange(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="bg-transparent border-none text-white w-full focus:outline-none"
-                  autoFocus
-                  autoComplete="off"
-                  spellCheck="false"
-                  placeholder={state.activeChannel ? `Active channel: ${state.activeChannel}` : ''}
-                />
+                <span className="text-cyan-400 mr-2" style={{ height: '24px' }}>$</span>
+                <div className="relative w-full">
+                  <textarea
+                    id="input-form-input"
+                    ref={inputRef}
+                    value={state.command}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className={`bg-transparent border-none text-white w-full focus:outline-none resize-none overflow-hidden ${charState.exceeded ? 'text-red-500' : ''
+                      }`}
+                    rows={1}
+                    autoFocus
+                    autoComplete="off"
+                    spellCheck="false"
+                    placeholder={state.activeChannel ? `Active channel: ${state.activeChannel}` : ''}
+                  />
+                  {charState.exceeded && (
+                    <div className="absolute right-0 bottom-full text-red-500 text-xs mb-1 bg-black bg-opacity-75 px-2 py-1 rounded">
+                      {charState.current}/{charState.max} characters
+                    </div>
+                  )}
+                </div>
+                <button type='submit' id='submit-button'>Send</button>
               </form>
             </div>
           </div>

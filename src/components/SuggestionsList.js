@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useTerminal } from '../context/TerminalContext';
+import Image from '../helpers/Image'
+
 
 const accesMap = new Map();
 accesMap.set(0, { 'color': '#777777ff', 'text': 'Everyone' });
@@ -47,6 +49,19 @@ function SuggestionsList({ suggestions, activeSuggestionIndex, onSelect }) {
 
                         </li>
                     );
+                else if (properties.type === 'emote') {
+                    return (
+                        <li
+                            key={index}
+                            className={`px-3 py-2 cursor-pointer ${isActive ? 'bg-white' : 'hover:bg-gray-700'} flex items-center`}
+                            onClick={() => onSelect(suggestion)}
+                            ref={isActive ? activeRef : null}
+                        >
+                            <Image code={suggestion} urls={properties.urls} />
+                            <span className="font-mono ml-2">{suggestion}</span>
+                        </li>
+                    );
+                }
                 else
                     return (
                         <li
@@ -59,7 +74,7 @@ function SuggestionsList({ suggestions, activeSuggestionIndex, onSelect }) {
                             <span className='mr-2' style={{ color: properties.color }}>
                                 [{properties.platform}]
                             </span>
-                            <span className='mr-2' style={{ color: accesMap.get(properties.level).color }}>{accesMap.get(properties.level).text}</span>
+                            <span className='mr-2' style={{ color: accesMap.get(properties.level)?.color }}>{accesMap.get(properties.level)?.text}</span>
                             <span className="font-mono">{suggestion} </span>
                             {
                                 properties.aliases && (
@@ -71,9 +86,9 @@ function SuggestionsList({ suggestions, activeSuggestionIndex, onSelect }) {
                                 )
                             }
                             {properties && (
-                                    <span className={`${isActive ? 'text-blue-900' : 'text-blue-400 hover:bg-gray-700'} ml-2`}>
-                                        {properties.description}
-                                    </span>
+                                <span className={`${isActive ? 'text-blue-900' : 'text-blue-400 hover:bg-gray-700'} ml-2`}>
+                                    {properties.description}
+                                </span>
                             )}
 
                         </li>

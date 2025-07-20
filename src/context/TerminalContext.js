@@ -10,7 +10,7 @@
  * 
  * @typedef {{ name: string | function , description: string }} Suggestion
  *
- * @typedef { { type: 'DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL', payload: string } | { type: 'SET_ACTIVE_CHANNEL', payload: string | null } |{ type: 'ADD_LINE', payload: TerminalLine } | { type: 'SET_COMMAND', payload: string } | { type: 'ADD_TO_HISTORY', payload: string } | { type: 'SET_HISTORY_INDEX', payload: number } | { type: 'SET_AVAILABLE_COMMANDS', payload: AvailableCommands } | { type: 'SET_SUGGESTIONS', payload: Suggestion[] } | { type: 'SET_ACTIVE_SUGGESTION', payload: number } | { type: 'SET_SHOW_SUGGESTIONS', payload: boolean } | { type: 'CLEAR_LINES' } } TerminalAction
+ * @typedef { { type: 'SET_ACTIVE_CHANNEL', payload: string | null } |{ type: 'ADD_LINE', payload: TerminalLine } | { type: 'SET_COMMAND', payload: string } | { type: 'ADD_TO_HISTORY', payload: string } | { type: 'SET_HISTORY_INDEX', payload: number } | { type: 'SET_AVAILABLE_COMMANDS', payload: AvailableCommands } | { type: 'SET_SUGGESTIONS', payload: Suggestion[] } | { type: 'SET_ACTIVE_SUGGESTION', payload: number } | { type: 'SET_SHOW_SUGGESTIONS', payload: boolean } | { type: 'CLEAR_LINES' } } TerminalAction
  *
  * 
  * @typedef {{
@@ -48,7 +48,8 @@
  *   SET_SHOW_SUGGESTIONS: string,
  *   SET_ACTIVE_CHANNEL: string,
  *   CLEAR_LINES: string,
- *   DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL: string
+ *   DELETE_CHANNEL_AVAILABLE_EMOTES_CHANNEL: string,
+ *   SET_AVAILABLE_EMOTES: string,
  * }} TerminalActions
  * 
  * @typedef {{
@@ -56,19 +57,31 @@
  *   dispatch: React.Dispatch<TerminalAction>,
  *   actions: TerminalActions
  * }} TerminalContextValue
- */
+ * 
+ * @typedef {Object} Emote
+ * @property {string} code - Emote code (e.g., "Kappa")
+ * @property {boolean} animated - Whether the emote is animated
+ * @property {number} provider - Emote provider ID
+ * @property {Array<{size: string, url: string}>} urls - Emote image URLs
+ * @property {boolean} zero_width - If emote is zero-width
+ * 
+ * @typedef {Object} AvailableEmotes
+ * @property {Emote[]} global - Global emotes
+ * @property {Emote[]} [channelName] - Channel-specific emotes
+*/
 
 
 import React, { createContext, useReducer, useContext } from 'react';
 
 const initialState = {
     lines: [
-        { type: 'system', content: 'Terminal initialized. Type "help" for a list of commands.' }
+        { type: 'system', content: 'Terminal initialized. Type "/help" for a list of commands.' }
     ],
     command: '',
     commandHistory: [],
     historyIndex: -1,
     availableCommands: {
+        '/debug': { description: 'Shows state Object.', params: [] },
         '/help': { description: 'Shows this help message.', params: [] },
         '/clear': { description: 'Clears the terminal screen.', params: [] },
         '/connect': { description: 'Connects to the mock server.', params: [] },
@@ -80,7 +93,10 @@ const initialState = {
     showSuggestions: false,
     availableCommandsChannel: {},
     activeChannel: null,
-    autoConnect: false
+    autoConnect: false,
+    availableEmotes: {
+        global: []
+    },
 };
 
 export const actions = {
@@ -94,8 +110,9 @@ export const actions = {
     SET_SHOW_SUGGESTIONS: 'SET_SHOW_SUGGESTIONS',
     CLEAR_LINES: 'CLEAR_LINES',
     SET_AVAILABLE_COMMANDS_CHANNEL: 'SET_AVAILABLE_COMMANDS_CHANNEL',
+    DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL: 'DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL',
     SET_ACTIVE_CHANNEL: 'SET_ACTIVE_CHANNEL',
-    DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL: 'DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL'
+    SET_AVAILABLE_EMOTES: 'SET_AVAILABLE_EMOTES',
 };
 
 /**
@@ -146,6 +163,15 @@ function reducer(state, action) {
                 }
             };
 
+        case 'SET_ACTIVE_CHANNEL':
+            return { ...state, activeChannel: action.payload };
+
+        case 'SET_AVAILABLE_EMOTES':
+            return {
+                ...state,
+                availableEmotes: action.payload
+            };
+
         case 'DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL': {
             // Create a copy of the current state
             const updatedCommands = { ...state.availableCommandsChannel };
@@ -160,9 +186,6 @@ function reducer(state, action) {
                 availableCommandsChannel: updatedCommands
             };
         }
-
-        case 'SET_ACTIVE_CHANNEL':
-            return { ...state, activeChannel: action.payload };
 
         default:
             console.error("Reducer got invalid action type: " + action.type + "\n - No changes to state were done.");

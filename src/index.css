@@ -15,6 +15,7 @@
           --twitch-purple: #9147ff;
           /* Twitch's signature purple */
           --twitch-light-purple: #a970ff;
+          --twitch-light-purple-alpha: #a970ff10
           /* A slightly lighter purple for highlights */
           --twitch-gray-light: #2c2c31;
           /* Lighter gray for scrollbar track */

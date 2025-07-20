@@ -1,4 +1,5 @@
 import { useTerminal } from '../context/TerminalContext';
+import applyCharacterLimit from '../helpers/applyCharacterLimit'
 
 const accesMap = new Map();
 accesMap.set(100, { txt: '<span style="color:  #eeeeeeff;">Everyone</span>', level: 0 });
@@ -70,6 +71,27 @@ export default function useTerminalActions() {
                 addMessage('system', `Connection status: ${statusText}`);
                 break;
 
+            // Add this new case for /debug
+            case '/debug': {
+                const debugOutput = JSON.stringify(state, null, 2);
+                addMessage('output', (icon) => (
+                    <div className="max-h-80 overflow-auto bg-gray-800 p-2 rounded">
+                        <pre className="whitespace-pre-wrap break-words">{debugOutput}</pre>
+                    </div>
+                ));
+                break;
+            }
+
+            case '/join':
+                if (cmd === "/join" && (args[0] === "@" || args[0] === undefined) && state.activeChannel) {
+                    addMessage('join', ` -> [${state.activeChannel}]`);
+                    const success = wsMethods.sendMessage({ command: `/join`, payload: `#${state.activeChannel}` });
+                    if (!success) {
+                        addMessage('error', 'Failed to send message - connection not ready');
+                    }
+                    return;
+                }
+
             case '/say':
                 if (args.length > 0 && args[0].startsWith('#')) {
                     const channel = args[0].substring(1);
@@ -93,6 +115,25 @@ export default function useTerminalActions() {
     const executeCommand = (command, wsMethods) => {
         if (!command.trim()) return;
 
+        // Apply character limit validation
+        let charCount = command.length;
+        let message = command;
+
+        if (!command.startsWith('/') || command.startsWith('/say')) {
+            if (command.startsWith('/say') && state.activeChannel) {
+                const prefix = `/say #${state.activeChannel} `;
+                if (command.startsWith(prefix)) {
+                    message = command.substring(prefix.length);
+                    charCount = message.length;
+                }
+            }
+
+            if (charCount > 500) {
+                addMessage('error', `Message exceeds 500 characters (${charCount}/500)`);
+                return;
+            }
+        }
+
         addMessage('command', command);
         dispatch({ type: actions.SET_SHOW_SUGGESTIONS, payload: false });
 
@@ -104,7 +145,6 @@ export default function useTerminalActions() {
             const payload = args.join(' ');
 
             let success = false;
-
             if (cmd[0] !== '/' && state.activeChannel) {
                 success = wsMethods.sendMessage({ command: `/say`, payload: `#${state.activeChannel} ${command}` });
                 if (success) addMessage('system', `TY -> [${state.activeChannel}] ${command}`);
@@ -147,10 +187,30 @@ export default function useTerminalActions() {
                 }
             });
         }
+        else if (currentPart.startsWith(':')) {
+            const emotePrefix = currentPart.substring(1).toLowerCase();
+            const activeChannel = state.activeChannel;
+
+            // Get emotes from active channel or global
+            const channelEmotes = state.availableEmotes[activeChannel] || [];
+            const globalEmotes = state.availableEmotes.global || [];
+            const allEmotes = [...channelEmotes, ...globalEmotes];
+
+            matches = allEmotes
+                .filter(emote =>
+                    emote.code.toLowerCase().includes(emotePrefix)
+                )
+                .map(emote => ({
+                    cmd: `${emote.code}`,
+                    properties: { type: 'emote', ...emote }
+                }));
+        }
         // Channel command suggestions (after channel)
-        else if (currentPart.startsWith('!') && parts.length > 1 && parts[1].startsWith('#')) {
-            const channel = parts[1].substring(1);
-            const commandPrefix = currentPart.substring(1).toLowerCase();
+        else if ((currentPart.startsWith('!') && parts.length > 1 && parts[1].startsWith('#'))
+            // || (currentPart.startsWith('!') && state.activeChannel)
+        ) {
+            const channel = parts[1].substring(1) || state.activeChannel;
+            const commandPrefix = currentPart.substring(1).toLowerCase() || value.toLowerCase();
 
             if (state.availableCommandsChannel[channel]) {
                 const allCommands = [];
