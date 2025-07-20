@@ -25,7 +25,7 @@ function SuggestionsList({ suggestions, activeSuggestionIndex, onSelect }) {
     }, [activeSuggestionIndex]);
 
     return (
-        <ul style={{ width: '80vw', maxHeight: '70vh' }} className="absolute bottom-full mb-1 overflow-auto bg-gray-800 border border-gray-700 rounded-md shadow-lg z-10">
+        <ul style={{ maxHeight: '70vh', maxWidth: '100vw' }} className="absolute bottom-full mb-1 overflow-auto bg-gray-800 border border-gray-700 rounded-md shadow-lg z-10">
             {suggestions.map(({ cmd: suggestion, properties }, index) => {
                 const commandInfo = state.availableCommands[suggestion];
                 const isActive = index === activeSuggestionIndex;
@@ -37,14 +37,14 @@ function SuggestionsList({ suggestions, activeSuggestionIndex, onSelect }) {
                             onClick={() => onSelect(suggestion)}
                             ref={isActive ? activeRef : null}
                         >
-                            <div className="flex items-center">
-                                <span className="font-mono">{suggestion} </span>
-                                {commandInfo && (
-                                    <span className={`${isActive ? 'text-blue-900' : 'text-blue-400 hover:bg-gray-700'} ml-2 truncate`}>
-                                        {commandInfo.description}
-                                    </span>
-                                )}
-                            </div>
+
+                            <span className="font-mono">{suggestion} </span>
+                            {commandInfo && (
+                                <span className={`${isActive ? 'text-blue-900' : 'text-blue-400 hover:bg-gray-700'} ml-2 truncate`}>
+                                    {commandInfo.description}
+                                </span>
+                            )}
+
                         </li>
                     );
                 else
@@ -55,29 +55,27 @@ function SuggestionsList({ suggestions, activeSuggestionIndex, onSelect }) {
                             onClick={() => onSelect(suggestion)}
                             ref={isActive ? activeRef : null}
                         >
-                            <div className="flex items-center">
-                                <span className='mr-2' style={{ color: properties.color }}>
-                                    [{properties.platform}]
-                                </span>
-                                <span className='mr-2' style={{ color: accesMap.get(properties.level).color }}>{accesMap.get(properties.level).text}</span>
-                                <span className="font-mono">{suggestion} </span>
-                                {
-                                    properties.aliases && (
-                                        <div>
-                                            {properties.aliases.map((a) => {
-                                                return <span className='ml-2'>{a}</span>
-                                            })}
-                                        </div>
-                                    )
-                                }
-                                {properties && (
+
+                            <span className='mr-2' style={{ color: properties.color }}>
+                                [{properties.platform}]
+                            </span>
+                            <span className='mr-2' style={{ color: accesMap.get(properties.level).color }}>{accesMap.get(properties.level).text}</span>
+                            <span className="font-mono">{suggestion} </span>
+                            {
+                                properties.aliases && (
                                     <>
-                                        <span className={`${isActive ? 'text-blue-900' : 'text-blue-400 hover:bg-gray-700'} ml-2 truncate`}>
-                                            {properties.description}
-                                        </span>
+                                        {properties.aliases.map((a) => {
+                                            return <span className='ml-2'>{a}</span>
+                                        })}
                                     </>
-                                )}
-                            </div>
+                                )
+                            }
+                            {properties && (
+                                    <span className={`${isActive ? 'text-blue-900' : 'text-blue-400 hover:bg-gray-700'} ml-2`}>
+                                        {properties.description}
+                                    </span>
+                            )}
+
                         </li>
                     );
             })}

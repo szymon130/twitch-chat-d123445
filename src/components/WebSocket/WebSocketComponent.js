@@ -34,6 +34,7 @@ import { useState, useEffect, useCallback } from 'react';
  * @param {WebSocketEventHandler} [props.onClose] - Callback for when the connection closes.
  * @param {WebSocketErrorEventHandler} [props.onError] - Callback for WebSocket errors.
  * @param {RenderPropFunction} props.children - A function that renders the component's children.
+ * @param {Boolean} props.autoConnect - Autoconnect - default false.
  */
 const WebSocketComponent = ({
   url,
@@ -41,7 +42,8 @@ const WebSocketComponent = ({
   onMessage,
   onClose,
   onError,
-  children
+  children,
+  autoConnect = false  // Add new prop
 }) => {
   /** @type {React.MutableRefObject<WebSocket | null>} */
   // Use a ref if you don't want re-renders when the socket object itself changes,
@@ -55,7 +57,7 @@ const WebSocketComponent = ({
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  const maxReconnectAttempts = 5;
+  const maxReconnectAttempts = 10;
 
   const connect = useCallback(() => {
     if (socket) {
@@ -95,6 +97,19 @@ const WebSocketComponent = ({
 
     setSocket(ws);
   }, [url, onOpen, onMessage, onClose, onError, reconnectAttempts, socket]);
+
+  useEffect(() => {
+    // Auto-connect if requested
+    if (!isConnected && autoConnect) {
+      connect();
+    }
+
+    return () => {
+      if (socket) {
+        socket.close();
+      }
+    };
+  }, [autoConnect, isConnected]); // Run only when autoConnect changes
 
   const disconnect = useCallback(() => {
     if (socket) {

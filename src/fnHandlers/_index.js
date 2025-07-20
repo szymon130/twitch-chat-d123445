@@ -24,7 +24,13 @@ const fnHandlers = {
 export default function handleFnCall(fnName, data, context) {
     const handler = fnHandlers[fnName];
     if (handler) {
+        // console.log('S----------------------------------------------');
+        // console.log(fnName, data, context)
+        // console.log('A----------------------------------------------');
         handler(data, context);
+        // console.log('A----------------------------------------------');
+        // console.log(fnName, data, context)
+        // console.log('E----------------------------------------------');
         return true; // Handled successfully
     }
     return false; // No handler found

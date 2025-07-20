@@ -1,6 +1,9 @@
-export default function availableCommandsChannel(data, { dispatch }) {
+export default function availableCommandsChannel(data, { dispatch, state }) {
   dispatch({
     type: 'SET_AVAILABLE_COMMANDS_CHANNEL',
-    payload: data
+    payload: {
+      ...state.availableCommandsChannel,
+      ...data
+    }
   });
 }

@@ -10,7 +10,7 @@
  * 
  * @typedef {{ name: string | function , description: string }} Suggestion
  *
- * @typedef { { type: 'SET_ACTIVE_CHANNEL', payload: string | null } |{ type: 'ADD_LINE', payload: TerminalLine } | { type: 'SET_COMMAND', payload: string } | { type: 'ADD_TO_HISTORY', payload: string } | { type: 'SET_HISTORY_INDEX', payload: number } | { type: 'SET_AVAILABLE_COMMANDS', payload: AvailableCommands } | { type: 'SET_SUGGESTIONS', payload: Suggestion[] } | { type: 'SET_ACTIVE_SUGGESTION', payload: number } | { type: 'SET_SHOW_SUGGESTIONS', payload: boolean } | { type: 'CLEAR_LINES' } } TerminalAction
+ * @typedef { { type: 'DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL', payload: string } | { type: 'SET_ACTIVE_CHANNEL', payload: string | null } |{ type: 'ADD_LINE', payload: TerminalLine } | { type: 'SET_COMMAND', payload: string } | { type: 'ADD_TO_HISTORY', payload: string } | { type: 'SET_HISTORY_INDEX', payload: number } | { type: 'SET_AVAILABLE_COMMANDS', payload: AvailableCommands } | { type: 'SET_SUGGESTIONS', payload: Suggestion[] } | { type: 'SET_ACTIVE_SUGGESTION', payload: number } | { type: 'SET_SHOW_SUGGESTIONS', payload: boolean } | { type: 'CLEAR_LINES' } } TerminalAction
  *
  * 
  * @typedef {{
@@ -47,7 +47,8 @@
  *   SET_ACTIVE_SUGGESTION: string,
  *   SET_SHOW_SUGGESTIONS: string,
  *   SET_ACTIVE_CHANNEL: string,
- *   CLEAR_LINES: string
+ *   CLEAR_LINES: string,
+ *   DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL: string
  * }} TerminalActions
  * 
  * @typedef {{
@@ -72,12 +73,14 @@ const initialState = {
         '/clear': { description: 'Clears the terminal screen.', params: [] },
         '/connect': { description: 'Connects to the mock server.', params: [] },
         '/status': { description: 'Checks the connection status.', params: [] },
+        '/refresh': { description: 'Press da F5!', params: [] },
     },
     suggestions: [],
     activeSuggestionIndex: 0,
     showSuggestions: false,
     availableCommandsChannel: {},
-    activeChannel: null
+    activeChannel: null,
+    autoConnect: false
 };
 
 const actions = {
@@ -91,7 +94,8 @@ const actions = {
     SET_SHOW_SUGGESTIONS: 'SET_SHOW_SUGGESTIONS',
     CLEAR_LINES: 'CLEAR_LINES',
     SET_AVAILABLE_COMMANDS_CHANNEL: 'SET_AVAILABLE_COMMANDS_CHANNEL',
-    SET_ACTIVE_CHANNEL: 'SET_ACTIVE_CHANNEL'
+    SET_ACTIVE_CHANNEL: 'SET_ACTIVE_CHANNEL',
+    DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL: 'DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL'
 };
 
 /**
@@ -133,7 +137,29 @@ function reducer(state, action) {
             return { ...state, lines: [] };
 
         case 'SET_AVAILABLE_COMMANDS_CHANNEL':
-            return { ...state, availableCommandsChannel: action.payload };
+            // Merge new channel commands with existing ones
+            return {
+                ...state,
+                availableCommandsChannel: {
+                    ...state.availableCommandsChannel,
+                    ...action.payload
+                }
+            };
+
+        case 'DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL':
+            // Merge new channel commands with existing ones
+            const availableCommandsChannel = {
+                ...state.availableCommandsChannel
+            };
+            if (actions.payload
+                && availableCommandsChannel[actions.payload])
+                delete availableCommandsChannel[actions.payload]
+            return {
+                ...state,
+                availableCommandsChannel: {
+                    ...availableCommandsChannel
+                }
+            };
 
         case 'SET_ACTIVE_CHANNEL':
             return { ...state, activeChannel: action.payload };

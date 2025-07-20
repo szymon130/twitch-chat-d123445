@@ -63,7 +63,7 @@ const MessageIcon = ({ type }) => {
 
   if (iconMap[type] && iconMap[type].path) {
     return (
-      <svg className={`w-4 h-4 mr-3 inline-block flex-shrink-0 ${colorClass}`} viewBox="0 0 20 20" fill="currentColor">
+      <svg style={{ display: 'inline-block' }} className={`w-4 h-4 inline-block flex-shrink-0 ${colorClass}`} viewBox="0 0 20 20" fill="currentColor">
         <path d={iconMap[type].path} />
       </svg>
     );

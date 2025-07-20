@@ -44,6 +44,10 @@ export default function useTerminalActions() {
                 dispatch({ type: actions.CLEAR_LINES });
                 break;
 
+            case '/refresh':
+                document.location.reload();
+                break;
+
             case '/connect':
                 if (wsMethods.isConnected) {
                     addMessage('error', 'Already connected.');
@@ -102,8 +106,8 @@ export default function useTerminalActions() {
             let success = false;
 
             if (cmd[0] !== '/' && state.activeChannel) {
-                success = wsMethods.sendMessage({ command: `/say`, payload: `#${state.activeChannel} ${cmd}` });
-                if (success) addMessage('system', `TY -> [${state.activeChannel}] ${cmd}`);
+                success = wsMethods.sendMessage({ command: `/say`, payload: `#${state.activeChannel} ${command}` });
+                if (success) addMessage('system', `TY -> [${state.activeChannel}] ${command}`);
             }
             else success = wsMethods.sendMessage({ command: cmd, payload });
             if (!success) {
@@ -130,7 +134,7 @@ export default function useTerminalActions() {
         let matches = [];
 
         // Channel suggestions (when typing #)
-        if (currentPart.startsWith('#') && parts[0] === '/say') {
+        if (currentPart.startsWith('#') && (parts[0] === '/say' || parts[0] === '/exit')) {
             const channelPrefix = currentPart.substring(1);
             matches = Object.keys(state.availableCommandsChannel)
                 .filter(channel => channel.startsWith(channelPrefix))

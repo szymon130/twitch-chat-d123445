@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import SuggestionsList from './components/SuggestionsList';
 import TerminalLine from './components/TerminalLine';
 import WebSocketComponent from './components/WebSocket/WebSocketComponent';
@@ -10,6 +10,7 @@ function TerminalApp() {
   const terminalEndRef = useRef(null);
   const inputRef = useRef(null);
   const formRef = useRef(null);
+  const [initialAutoConnect, setInitialAutoConnect] = useState(false);
 
   const { state, addMessage, executeCommand, handleInputChange, dispatch } =
     useTerminalActions();
@@ -20,6 +21,7 @@ function TerminalApp() {
     const channel = urlParams.get('channel');
     if (channel) {
       dispatch({ type: 'SET_ACTIVE_CHANNEL', payload: channel });
+      setInitialAutoConnect(true); // Set flag for auto-connect
     }
   }, [dispatch]);
 
@@ -92,6 +94,7 @@ function TerminalApp() {
   return (
     <WebSocketComponent
       url="ws://localhost:5000/ws"
+      autoConnect={initialAutoConnect} // Pass auto-connect flag
       onOpen={(event) => {
         addMessage('success', 'WebSocket connection established');
         dispatch({
@@ -153,12 +156,10 @@ function TerminalApp() {
             </div>
 
             {/* Output */}
-            <div id="terminal-window" className="flex-grow p-2 overflow-y-auto">
-              <div className="space-y-2">
-                {state.lines.map((line, index) => (
-                  <TerminalLine key={index} type={line.type} content={line.content} />
-                ))}
-              </div>
+            <div id="terminal-window" className="flex-grow overflow-y-auto">
+              {state.lines.map((line, index) => (
+                <TerminalLine key={index} type={line.type} content={line.content} index={index} />
+              ))}
               <div ref={terminalEndRef} />
             </div>
 
@@ -182,9 +183,11 @@ function TerminalApp() {
                   executeCommand(state.command, wsMethods);
                 }}
                 className="flex items-center font-mono text-sm"
+                id="input-form"
               >
                 <span className="text-cyan-400 mr-2">$</span>
                 <input
+                  id="input-form-input"
                   ref={inputRef}
                   type="text"
                   value={state.command}
@@ -194,7 +197,7 @@ function TerminalApp() {
                   autoFocus
                   autoComplete="off"
                   spellCheck="false"
-                  placeholder={ state.activeChannel ? `Active channel: ${state.activeChannel}` : '' }
+                  placeholder={state.activeChannel ? `Active channel: ${state.activeChannel}` : ''}
                 />
               </form>
             </div>
