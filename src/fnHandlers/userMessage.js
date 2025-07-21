@@ -145,5 +145,17 @@ export default function handleUserMessage(data, { addMessage, state, dispatch })
             </div>
         );
         addMessage('message', message);
+
+        dispatch({
+            type: actions.ADD_MESSAGE_TO_SAVED,
+            payload: {
+                id: tags.id,
+                timestamp: Date.now(),
+                channel,
+                user: tags['display-name'] || user,
+                message: message_part,
+                tags
+            }
+        });
     }
 }

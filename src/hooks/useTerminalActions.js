@@ -149,6 +149,7 @@ export default function useTerminalActions() {
 
         const [cmd, ...args] = command.trim().split(' ');
 
+
         if (Object.keys(state.availableCommands).includes(cmd)) {
             handleFrontendCommand(cmd, args, wsMethods);
         } else if (wsMethods.isConnected) {
@@ -165,6 +166,12 @@ export default function useTerminalActions() {
             }
         } else {
             addMessage('error', `Command not found: ${cmd}. Not connected to a server.`);
+        }
+
+        if (command.startsWith('/clear-saved')) {
+            dispatch({ type: actions.CLEAR_SAVED_MESSAGES });
+            addMessage('system', 'Cleared saved messages');
+            return;
         }
 
         dispatch({ type: actions.ADD_TO_HISTORY, payload: command });

@@ -159,10 +159,10 @@ function TerminalApp() {
           type: actions.SET_AVAILABLE_COMMANDS,
           payload: {
             ...state.availableCommands,
-            // disconnect: { description: 'Disconnects from the server.', params: [] },
-            // ping: { description: 'Pings the server.', params: [] },
-            // echo: { description: 'Server echoes back the payload.', params: ['--payload'] },
-            // login: { description: 'Logs in a user.', params: ['--user'] }
+            '/clear-saved': {
+              description: 'Clears saved chat messages',
+              params: []
+            },
           }
         });
       }}
