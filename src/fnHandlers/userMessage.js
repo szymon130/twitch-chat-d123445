@@ -44,8 +44,8 @@ export default function handleUserMessage(data, { addMessage, state, dispatch })
     /**
      * @type {ChatMessageData}
     */
-    const { availableEmotes, command } = state;
-    data.message_part = data.message_part.replace(/\u0001/g, "");
+    const { availableEmotes } = state;
+    data.message_part = data.message_part.replaceAll('\u0001', "");
     const { user, channel, formatted_time, message_part, channel_color, user_color, tags } = data;
     const userData = state.userDataByChannel[channel];
     // Check if this is a channel command

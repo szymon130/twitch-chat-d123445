@@ -97,7 +97,6 @@ const WebSocketComponent = ({
 
     setSocket(ws);
   }, [url, onOpen, onMessage, onClose, onError, reconnectAttempts, socket]);
-
   useEffect(() => {
     // Auto-connect if requested
     if (!isConnected && autoConnect) {
@@ -109,6 +108,7 @@ const WebSocketComponent = ({
         socket.close();
       }
     };
+    // eslint-disable-next-line
   }, [autoConnect, isConnected]); // Run only when autoConnect changes
 
   const disconnect = useCallback(() => {

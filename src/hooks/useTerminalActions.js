@@ -33,12 +33,23 @@ export default function useTerminalActions() {
     const handleFrontendCommand = (cmd, args, wsMethods) => {
         switch (cmd) {
             case '/help':
-                const helpText = Object.entries(state.availableCommands)
-                    .map(([name, { description, params }]) =>
-                        `${name.padEnd(12)} ${params.join(' ')}\n  ${description}`
-                    )
-                    .join('\n');
-                addMessage('output', `Available Commands:\n${helpText}`);
+                const helpText = (
+                    <>
+                        <h3>Available commands</h3>
+                        <ul>
+                            {Object.entries(state.availableCommands).map(
+                                ([name, { description, params }]) => (
+                                    <li key={name}>
+                                        <span style={{ color: 'lime' }}>{name.padEnd(12)}</span>
+                                        <span style={{ color: 'orange' }}>{params.join(" ")}</span> -
+                                        <span style={{ color: 'gray' }}>{` ${description}`}</span>
+                                    </li>
+                                )
+                            )}
+                        </ul>
+                    </>
+                );
+                addMessage('output', helpText);
                 break;
 
             case '/clear':
