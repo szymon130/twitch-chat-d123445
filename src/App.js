@@ -6,9 +6,10 @@ import handleFnCall from './fnHandlers/_index';
 import { TerminalProvider } from './context/TerminalContext';
 import useTerminalActions from './hooks/useTerminalActions';
 import { actions } from './context/TerminalContext';
+import NotificationCarousel from './NotificationCarousel'
 
 function TerminalApp() {
-  const { state, addMessage, executeCommand, handleInputChange, dispatch } =
+  const { state, addMessage, executeCommand, handleInputChange, dispatch, addNotification } =
     useTerminalActions();
 
   const terminalEndRef = useRef(null);
@@ -21,6 +22,10 @@ function TerminalApp() {
     }
   }, [state.command]);
   const [initialAutoConnect, setInitialAutoConnect] = useState(false);
+
+  useEffect(() => {
+    window.__terminalCommandRef = state.command;
+  }, [state.command]);
 
   // Add character count state
   const [charState, setCharState] = useState({
@@ -140,6 +145,31 @@ function TerminalApp() {
     }
   };
 
+  const removeNotification = (id) => {
+    dispatch({ type: actions.REMOVE_NOTIFICATION, payload: id });
+  };
+
+
+  // function NotificationCenter({ notifications }) {
+  //   return (
+  //     <div className="fixed top-4 right-4 z-50 w-64">
+  //       {notifications.map(notification => (
+  //         <div
+  //           key={notification.id}
+  //           className="animate-fadeIn transform transition-transform duration-300"
+  //           style={{
+  //             opacity: 1,
+  //             transform: 'translateX(0)',
+  //             transition: 'opacity 0.3s, transform 0.3s'
+  //           }}
+  //         >
+  //           {notification.content}
+  //         </div>
+  //       ))}
+  //     </div>
+  //   );
+  // }
+
   return (
     <WebSocketComponent
       url="ws://localhost:5000/ws"
@@ -150,10 +180,10 @@ function TerminalApp() {
           type: actions.SET_AVAILABLE_COMMANDS,
           payload: {
             ...state.availableCommands,
-            disconnect: { description: 'Disconnects from the server.', params: [] },
-            ping: { description: 'Pings the server.', params: [] },
-            echo: { description: 'Server echoes back the payload.', params: ['--payload'] },
-            login: { description: 'Logs in a user.', params: ['--user'] }
+            // disconnect: { description: 'Disconnects from the server.', params: [] },
+            // ping: { description: 'Pings the server.', params: [] },
+            // echo: { description: 'Server echoes back the payload.', params: ['--payload'] },
+            // login: { description: 'Logs in a user.', params: ['--user'] }
           }
         });
       }}
@@ -168,7 +198,8 @@ function TerminalApp() {
               {
                 addMessage,
                 dispatch,
-                state: stateRef.current // Use current state from ref
+                state: stateRef.current,
+                addNotification // Add this to pass to handlers
               }
             );
 
@@ -193,6 +224,10 @@ function TerminalApp() {
     >
       {(wsMethods) => (
         <div className="text-white h-screen w-screen flex flex-col font-sans p-0 sm:p-4" style={{ backgroundColor: "#1f1f23" }}>
+          <NotificationCarousel
+            notifications={state.notifications}
+            removeNotification={removeNotification}
+          />
           <div className="bg-black bg-opacity-50 rounded-lg shadow-2xl flex flex-col flex-grow h-full overflow-hidden">
             {/* Header */}
             <div className="p-3 flex items-center border-b border-gray-700" style={{ backgroundColor: "#101011ff" }}>

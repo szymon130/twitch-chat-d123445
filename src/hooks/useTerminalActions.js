@@ -1,5 +1,6 @@
 import { useTerminal } from '../context/TerminalContext';
-import applyCharacterLimit from '../helpers/applyCharacterLimit'
+// import applyCharacterLimit from '../helpers/applyCharacterLimit'
+import JSONViewer from '../components/JSONViewer';
 
 const accesMap = new Map();
 accesMap.set(100, { txt: '<span style="color:  #eeeeeeff;">Everyone</span>', level: 0 });
@@ -15,7 +16,6 @@ accesMap.set("owner", { txt: '<span style="color: #de3131ff;">Broadcaster</span>
 
 export default function useTerminalActions() {
     const { state, dispatch, actions } = useTerminal();
-
     const updateCommandsSugestions = (payload) => {
         dispatch({
             type: actions.SET_AVAILABLE_COMMANDS,
@@ -71,16 +71,14 @@ export default function useTerminalActions() {
                 addMessage('system', `Connection status: ${statusText}`);
                 break;
 
-            // Add this new case for /debug
-            case '/debug': {
-                const debugOutput = JSON.stringify(state, null, 2);
+            case '/debug':
                 addMessage('output', (icon) => (
                     <div className="max-h-80 overflow-auto bg-gray-800 p-2 rounded">
-                        <pre className="whitespace-pre-wrap break-words">{debugOutput}</pre>
+                        <JSONViewer data={state} />
                     </div>
                 ));
                 break;
-            }
+
 
             case '/join':
                 if (cmd === "/join" && (args[0] === "@" || args[0] === undefined) && state.activeChannel) {
@@ -92,6 +90,7 @@ export default function useTerminalActions() {
                     return;
                 }
 
+            // eslint-disable-next-line
             case '/say':
                 if (args.length > 0 && args[0].startsWith('#')) {
                     const channel = args[0].substring(1);
@@ -345,12 +344,16 @@ export default function useTerminalActions() {
     };
 
 
+    const addNotification = (notification) => {
+        dispatch({ type: actions.ADD_NOTIFICATION, payload: notification });
+    };
     return {
         state,
         addMessage,
         executeCommand,
         handleInputChange,
         dispatch,
-        updateCommandsSugestions
+        updateCommandsSugestions,
+        addNotification
     };
 }

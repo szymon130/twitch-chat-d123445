@@ -50,6 +50,8 @@
  *   CLEAR_LINES: string,
  *   DELETE_CHANNEL_AVAILABLE_EMOTES_CHANNEL: string,
  *   SET_AVAILABLE_EMOTES: string,
+ *   ADD_NOTIFICATION: string,
+ *   REMOVE_NOTIFICATION: string
  * }} TerminalActions
  * 
  * @typedef {{
@@ -74,6 +76,7 @@
 import React, { createContext, useReducer, useContext } from 'react';
 
 const initialState = {
+    notifications: [],
     lines: [
         { type: 'system', content: 'Terminal initialized. Type "/help" for a list of commands.' }
     ],
@@ -92,6 +95,7 @@ const initialState = {
     activeSuggestionIndex: 0,
     showSuggestions: false,
     availableCommandsChannel: {},
+    userDataByChannel: {},
     activeChannel: null,
     autoConnect: false,
     availableEmotes: {
@@ -113,6 +117,10 @@ export const actions = {
     DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL: 'DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL',
     SET_ACTIVE_CHANNEL: 'SET_ACTIVE_CHANNEL',
     SET_AVAILABLE_EMOTES: 'SET_AVAILABLE_EMOTES',
+    ADD_NOTIFICATION: 'ADD_NOTIFICATION',
+    REMOVE_NOTIFICATION: 'REMOVE_NOTIFICATION',
+    SET_USER_DATA: 'SET_USER_DATA',
+    DELETE_USER_DATA: 'DELETE_USER_DATA'
 };
 
 /**
@@ -186,6 +194,39 @@ function reducer(state, action) {
                 availableCommandsChannel: updatedCommands
             };
         }
+
+        case 'ADD_NOTIFICATION':
+            // Add new notification to the end
+            return {
+                ...state,
+                notifications: [...state.notifications, action.payload]
+            };
+
+        case 'REMOVE_NOTIFICATION':
+            // Remove the specified notification
+            return {
+                ...state,
+                notifications: state.notifications.filter(n => n.id !== action.payload)
+            };
+
+        case 'SET_USER_DATA':
+            return {
+                ...state,
+                userDataByChannel: {
+                    ...state.userDataByChannel,
+                    ...action.payload
+                }
+            };
+
+        case 'DELETE_USER_DATA':
+            const updatedUserData = { ...state.userDataByChannel };
+            if (updatedUserData[action.payload]) {
+                delete updatedUserData[action.payload];
+            }
+            return {
+                ...state,
+                userDataByChannel: updatedUserData
+            };
 
         default:
             console.error("Reducer got invalid action type: " + action.type + "\n - No changes to state were done.");

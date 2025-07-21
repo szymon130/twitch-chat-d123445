@@ -1,6 +1,8 @@
 import lightenColor from '../helpers/lightenColor'
 import Image from '../helpers/Image'
 import { actions } from '../context/TerminalContext'
+import HighlightWords from '../helpers/HighlightWords'
+
 
 /**
  * Destructured Twitch chat message data.
@@ -41,9 +43,11 @@ import { actions } from '../context/TerminalContext'
 export default function handleUserMessage(data, { addMessage, state, dispatch }) {
     /**
      * @type {ChatMessageData}
-     */
+    */
     const { availableEmotes, command } = state;
+    data.message_part = data.message_part.replace(/\u0001/g, "");
     const { user, channel, formatted_time, message_part, channel_color, user_color, tags } = data;
+    const userData = state.userDataByChannel[channel];
     // Check if this is a channel command
 
     const col = lightenColor(tags.color || user_color, 40);
@@ -54,6 +58,7 @@ export default function handleUserMessage(data, { addMessage, state, dispatch })
         const channelEmotes = availableEmotes[activeChannel] || [];
         const globalEmotes = availableEmotes.global || [];
         const allEmotes = [...channelEmotes, ...globalEmotes];
+
 
         // Create a map for quick lookup
         const emoteMap = new Map();
@@ -83,6 +88,11 @@ export default function handleUserMessage(data, { addMessage, state, dispatch })
         });
     } else {
         if (tags['source-room-id'] !== undefined && tags['room-id'] !== tags['source-room-id']) return;
+
+        // Create a ref-like function to get the latest command
+        const getCurrentCommand = () => {
+            return window.__terminalCommandRef || '';
+        };
         const message = (icon) => (
             <div id={tags.id} className="relative px-2 pb-1 pt-3" style={{
                 borderLeft: state.activeChannel === channel ? '3px solid #a970ff' : '',
@@ -93,17 +103,45 @@ export default function handleUserMessage(data, { addMessage, state, dispatch })
                 }}>{formatted_time}
                     <span onClick={() => {
                         dispatch({ type: actions.SET_COMMAND, payload: `/say #${channel} ` });
-                    }} className="ml-1" style={{ color: chanCol, cursor: 'pointer' }}>{`#${channel}`}</span>
+                    }} className="ml-1" style={{ color: chanCol, cursor: 'pointer' }}>
+                        {`#${channel}`}
+                        {userData && userData.broadcaster_type && (
+                            <span className="ml-1 text-xs text-purple-400">
+                                ({userData.broadcaster_type})
+                            </span>
+                        )}
+                    </span>
                 </div>
                 <span onClick={() => {
-                    if (!command.includes(tags['display-name'] || user)) {
-                        if (command.includes(channel))
-                            dispatch({ type: actions.SET_COMMAND, payload: command + `@${tags['display-name'] || user} ` });
-                        else
-                            dispatch({ type: actions.SET_COMMAND, payload: `/say #${channel} @${tags['display-name'] || user} ` });
+                    const currentCommand = getCurrentCommand();
+                    const username = `@${tags['display-name'] || user}`;
+
+                    // Check if we're already in a /say command for this channel
+                    if (currentCommand.startsWith(`/say #${channel}`)) {
+                        // Check if username is already mentioned
+                        if (!currentCommand.includes(username)) {
+                            dispatch({ type: actions.SET_COMMAND, payload: currentCommand + username + ' ' });
+                        }
+                    }
+                    // If we're in a different channel command, switch to this channel
+                    else if (currentCommand.startsWith('/say #')) {
+                        dispatch({ type: actions.SET_COMMAND, payload: `/say #${channel} ${username} ` });
+                    }
+                    // If no channel command, create one
+                    else {
+                        dispatch({ type: actions.SET_COMMAND, payload: `/say #${channel} ${username} ` });
                     }
                 }} style={{ color: col, cursor: 'pointer' }}>{`${tags['display-name'] || user}`}</span>
-                : {renderMessageWithEmotes(message_part)}
+                : {
+                    HighlightWords(
+                        {
+                            textInput: renderMessageWithEmotes(message_part),
+                            wordsToStyle: [/^@?poprostu_szymon_xd$/i],
+                            className: 'highlighted'
+                        }
+                    )
+
+                }
             </div>
         );
         addMessage('message', message);

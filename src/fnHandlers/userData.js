@@ -1,3 +1,11 @@
-export default function userData(data, { addMessage }) {
-    addMessage('system', `Joined channel ${JSON.stringify(data)}`);
+import { actions } from '../context/TerminalContext';
+
+export default function userData(data, { dispatch, state }) {
+    dispatch({
+        type: actions.SET_USER_DATA,
+        payload: {
+            ...state.userDataByChannel,
+            ...data
+        }
+    });
 }

@@ -24,16 +24,18 @@
   color: white;
 }
 
-.App-link {
-  color: #61dafb;
+@keyframes pop {
+  0% {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(0);
+    opacity: 0.25;
+  }
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
+.animate-pop {
+  animation: pop 0.1s ease-out forwards;
 }

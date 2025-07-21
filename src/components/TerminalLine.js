@@ -1,5 +1,5 @@
 // src/components/TerminalLine.js
-
+import React from 'react';
 import MessageIcon from './MessageIcon'
 
 /**
@@ -33,8 +33,10 @@ const TerminalLine = ({ type, content, index }) => {
       className={`terminal-line text-sm ${typeClass[type]} break-all`}
       style={{ backgroundColor: index % 2 === 0 ? '#ffffff08' : 'transparent' }}
     >
-      {typeof content === 'string' ? (
-        <pre className="whitespace-pre-wrap break-words px-2 py-1">{icon} {content}</pre>
+      {typeof content === 'string' || React.isValidElement(content) ? (
+        <div className="px-2 py-1">
+          {icon} {content}
+        </div>
       ) : (
         content(icon)
       )}

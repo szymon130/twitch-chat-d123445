@@ -21,11 +21,15 @@ const fnHandlers = {
     // Add other handlers here as needed
 };
 
+// Update to pass addNotification to handlers
 export default function handleFnCall(fnName, data, context) {
     const handler = fnHandlers[fnName];
     if (handler) {
-        handler(data, context);
-        return true; // Handled successfully
+        handler(data, {
+            ...context,
+            addNotification: context.addNotification // Ensure this is passed
+        });
+        return true;
     }
-    return false; // No handler found
+    return false;
 }

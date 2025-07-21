@@ -6,5 +6,10 @@ export default function handleExited(data, { addMessage, dispatch, state }) {
         payload: data
     });
 
+    dispatch({
+        type: actions.DELETE_USER_DATA,
+        payload: data
+    });
+
     addMessage('system', `Left channel ${data} Sadge`);
 }
