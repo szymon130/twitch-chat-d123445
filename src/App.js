@@ -149,27 +149,6 @@ function TerminalApp() {
     dispatch({ type: actions.REMOVE_NOTIFICATION, payload: id });
   };
 
-
-  // function NotificationCenter({ notifications }) {
-  //   return (
-  //     <div className="fixed top-4 right-4 z-50 w-64">
-  //       {notifications.map(notification => (
-  //         <div
-  //           key={notification.id}
-  //           className="animate-fadeIn transform transition-transform duration-300"
-  //           style={{
-  //             opacity: 1,
-  //             transform: 'translateX(0)',
-  //             transition: 'opacity 0.3s, transform 0.3s'
-  //           }}
-  //         >
-  //           {notification.content}
-  //         </div>
-  //       ))}
-  //     </div>
-  //   );
-  // }
-
   return (
     <WebSocketComponent
       url="ws://localhost:5000/ws"

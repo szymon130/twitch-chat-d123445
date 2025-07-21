@@ -199,10 +199,8 @@ export default function useTerminalActions() {
         }
         else if (currentPart.startsWith(':')) {
             const emotePrefix = currentPart.substring(1).toLowerCase();
-            const activeChannel = state.activeChannel;
-
-            // Get emotes from active channel or global
-            const channelEmotes = state.availableEmotes[activeChannel] || [];
+            const channel = (parts[1] && parts[1].replace(/#/g, '')) || state.activeChannel;
+            const channelEmotes = state.availableEmotes[channel] || [];
             const globalEmotes = state.availableEmotes.global || [];
             const allEmotes = [...channelEmotes, ...globalEmotes];
 
