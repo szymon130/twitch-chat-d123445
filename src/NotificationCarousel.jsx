@@ -17,7 +17,7 @@ const NotificationCarousel = ({ notifications, removeNotification }) => {
         }
 
         // Calculate duration - first 5 get 5s, others get 1s
-        const duration = currentIndex < 5 ? 5000 : 1000;
+        const duration = currentIndex < 5 ? 1000 : 250;
 
         const showNextNotification = () => {
             // Exit animation for current notification

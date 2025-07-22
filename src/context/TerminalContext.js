@@ -1,8 +1,5 @@
 // src\context\TerminalContext.js
 
-// Add to imports
-import { loadMessages, saveMessages } from '../helpers/persistence';
-
 /**
  * 
  * @typedef {{ type: string, content: string }} TerminalLine
@@ -103,8 +100,7 @@ const initialState = {
     autoConnect: false,
     availableEmotes: {
         global: []
-    },
-    // savedMessages: loadMessages()
+    }
 };
 
 export const actions = {
@@ -124,9 +120,7 @@ export const actions = {
     ADD_NOTIFICATION: 'ADD_NOTIFICATION',
     REMOVE_NOTIFICATION: 'REMOVE_NOTIFICATION',
     SET_USER_DATA: 'SET_USER_DATA',
-    DELETE_USER_DATA: 'DELETE_USER_DATA',
-    ADD_MESSAGE_TO_SAVED: 'ADD_MESSAGE_TO_SAVED',
-    CLEAR_SAVED_MESSAGES: 'CLEAR_SAVED_MESSAGES',
+    DELETE_USER_DATA: 'DELETE_USER_DATA'
 };
 
 /**
@@ -255,19 +249,7 @@ const defaultContextValue = {
 const TerminalContext = createContext(defaultContextValue);
 
 export function TerminalProvider({ children }) {
-
-    // Load initial messages from localStorage
-    const localState = {
-        ...initialState,
-        savedMessages: loadMessages()
-    };
-
-    const [state, dispatch] = useReducer(reducer, localState);
-
-    // Save to localStorage when messages change
-    useEffect(() => {
-        saveMessages(state.savedMessages);
-    }, [state.savedMessages]);
+    const [state, dispatch] = useReducer(reducer, initialState);
 
     return (
         <TerminalContext.Provider value={{ state, dispatch, actions }}>

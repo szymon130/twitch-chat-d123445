@@ -168,12 +168,6 @@ export default function useTerminalActions() {
             addMessage('error', `Command not found: ${cmd}. Not connected to a server.`);
         }
 
-        if (command.startsWith('/clear-saved')) {
-            dispatch({ type: actions.CLEAR_SAVED_MESSAGES });
-            addMessage('system', 'Cleared saved messages');
-            return;
-        }
-
         dispatch({ type: actions.ADD_TO_HISTORY, payload: command });
         dispatch({ type: actions.SET_COMMAND, payload: '' });
     };
@@ -222,11 +216,11 @@ export default function useTerminalActions() {
         }
         // Channel command suggestions (after channel)
         else if ((currentPart.startsWith('!') && parts.length > 1 && parts[1].startsWith('#'))
-            // || (currentPart.startsWith('!') && state.activeChannel)
+            || (currentPart.startsWith('!') && state.activeChannel)
         ) {
-            const channel = parts[1].substring(1) || state.activeChannel;
-            const commandPrefix = currentPart.substring(1).toLowerCase() || value.toLowerCase();
-
+            const channel = parts[1]?.substring(1) || state.activeChannel;
+            const commandPrefix = currentPart?.substring(1).toLowerCase() || value.toLowerCase();
+            console.log(commandPrefix);
             if (state.availableCommandsChannel[channel]) {
                 const allCommands = [];
 
@@ -248,7 +242,7 @@ export default function useTerminalActions() {
                             cooldown = d.cooldown;
                         } else if (platform === 'nightbot') {
                             if (!accesMap.get(d.userLevel)) return;
-                            commandId = d.command || false;
+                            commandId = d.command || d.name || false;
                             aliases = [];
                             level = accesMap.get(d.userLevel).level;
                             description = d.message || "";
@@ -282,21 +276,6 @@ export default function useTerminalActions() {
                             cost: cost || 0,
                             cooldown: cooldown || 0
                         });
-
-                        // Include aliases in the search pool but don't add them to the list
-                        // aliases.forEach(alias => {
-                        //     allCommands.push({
-                        //         commandId: alias,
-                        //         isAlias: true,
-                        //         mainCommand: commandId,
-                        //         level,
-                        //         description,
-                        //         color,
-                        //         platform,
-                        //         cost: cost || 0,
-                        //         cooldown: cooldown || 0
-                        //     });
-                        // });
                     });
                 });
 
@@ -307,18 +286,13 @@ export default function useTerminalActions() {
                             return alias.toLowerCase().includes(commandPrefix);
                         }
                     }
-                    return cmd.commandId.toLowerCase().includes(commandPrefix);
+                    return cmd.commandId.toLowerCase().includes(commandPrefix) ||
+                        currentPart === '!';
                 }
                 );
-
-                // Create a map to track which main commands we've already included
-                // const includedCommands = new Set();
-
-                // Process commands: include only main commands, but use aliases for matching
                 const finalCommands = filteredCommands
-                    .filter(Boolean) // Remove any undefined entries
+                    .filter(Boolean)
                     .sort((a, b) => {
-                        // Sort by access level (descending) then alphabetically
                         if (b.level !== a.level) return a.level - b.level;
                         return a.commandId.localeCompare(b.commandId);
                     });
@@ -331,7 +305,6 @@ export default function useTerminalActions() {
                 });
             }
         }
-        // Existing command suggestions
         else if (parts.length === 1) {
             matches = Object.keys(state.availableCommands).filter(c => c.startsWith(currentPart));
             matches = matches.map(cmd => {

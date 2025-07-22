@@ -6,7 +6,7 @@ import handleFnCall from './fnHandlers/_index';
 import { TerminalProvider } from './context/TerminalContext';
 import useTerminalActions from './hooks/useTerminalActions';
 import { actions } from './context/TerminalContext';
-import NotificationCarousel from './NotificationCarousel'
+import NotificationCarousel from './NotificationCarousel';
 
 function TerminalApp() {
   const { state, addMessage, executeCommand, handleInputChange, dispatch, addNotification } =
@@ -158,11 +158,7 @@ function TerminalApp() {
         dispatch({
           type: actions.SET_AVAILABLE_COMMANDS,
           payload: {
-            ...state.availableCommands,
-            '/clear-saved': {
-              description: 'Clears saved chat messages',
-              params: []
-            },
+            ...state.availableCommands
           }
         });
       }}
