@@ -7,7 +7,7 @@ export const Message = ({ user, channel, formatted_time, message_part, channel_c
 
     const { availableEmotes } = state;
     const userData = state.userDataByChannel[channel];
-    
+
     const renderMessageWithEmotes = (message) => {
         const activeChannel = channel;
         const channelEmotes = availableEmotes[activeChannel] || [];
@@ -78,12 +78,12 @@ export const Message = ({ user, channel, formatted_time, message_part, channel_c
                 else {
                     dispatch({ type: actions.SET_COMMAND, payload: `/say #${channel} ${username} ` });
                 }
-            }} style={{ color: lightenColor(tags.color || user_color, 40), cursor: 'pointer' }}>{`${tags['display-name'] || user}`}</span>
+            }} style={{ color: lightenColor(tags.color || user_color, 40), cursor: 'pointer', fontWeight: 'bolder' }}>{`${tags['display-name'] || user}`}</span>
             : {
                 HighlightWords(
                     {
                         textInput: renderMessageWithEmotes(message_part),
-                        wordsToStyle: [/^@?poprostu_szymon_xd$/i],
+                        wordsToStyle: [/^@?poprostu_szymon_xd$/gi],
                         className: 'highlighted'
                     }
                 )

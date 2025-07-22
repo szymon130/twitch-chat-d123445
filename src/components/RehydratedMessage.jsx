@@ -1,9 +1,6 @@
 // src/components/RehydratedMessage.jsx
-
-import React from 'react';
 import { Message } from '../helpers/Message';
 import Image from '../helpers/Image';
-import JSONViewer from './JSONViewer';
 
 // Ensure `state` and `dispatch` are passed down for `Message` component's internal logic
 const RehydratedMessage = ({ line, dispatch, state }) => {
@@ -53,7 +50,8 @@ const RehydratedMessage = ({ line, dispatch, state }) => {
     } else if (rehydrateType === 'debug_output') {
         // As debug output is highly dynamic and might contain circular refs,
         // it's generally not fully rehydrated from localStorage.
-        return '[Debug Output from previous session]';
+        // The original content in this case would be '[Dynamic Output]' from the persist:false setting
+        return content;
     }
     // Fallback for simple string content or directly provided JSX (if any)
     // This will render placeholders for generic JSX or function content after refresh

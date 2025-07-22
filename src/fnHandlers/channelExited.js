@@ -1,6 +1,4 @@
 // src/fnHandlers/channelExited.js
-import { actions } from '../context/TerminalContext';
-// import Image from '../helpers/Image' // No longer needed directly here, handled by RehydratedMessage
 
 export default function handleExited(data, { addMessage }) {
     // Pass the raw data object for rehydration
@@ -15,5 +13,5 @@ export default function handleExited(data, { addMessage }) {
                 { size: '4x', url: 'https://cdn.7tv.app/emote/01EZPG1FN80001SNAW00ADK2DY/4x.webp' },
             ]
         }
-    });
+    }, true); // persist: true
 }

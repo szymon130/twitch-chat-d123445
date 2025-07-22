@@ -1,7 +1,7 @@
 // src/hooks/useTerminalActions.js
 import { useTerminal } from '../context/TerminalContext';
-// import applyCharacterLimit from '../helpers/applyCharacterLimit'
 import JSONViewer from '../components/JSONViewer';
+import { useCallback } from 'react';
 
 const accesMap = new Map();
 accesMap.set(100, { txt: '<span style="color:  #eeeeeeff;">Everyone</span>', level: 0 });
@@ -15,22 +15,40 @@ accesMap.set("everyone", { txt: '<span style="color:  #858585ff;">Everyone</span
 accesMap.set("moderator", { txt: '<span style="color:  #deb031ff;">Moderator</span>', level: 4 });
 accesMap.set("owner", { txt: '<span style="color: #de3131ff;">Broadcaster</span>', level: 6 });
 
-export default function useTerminalActions() {
+export default function useTerminalActions(appStateRef) { // Renamed parameter for clarity
     const { state, dispatch, actions } = useTerminal();
+
+    const addMessage = useCallback((type, content, rehydrateType = null, rehydrateData = null, persist = true) => {
+        // Use appStateRef.current to get the absolute latest state for buffered/displayed lines
+        const currentAppState = appStateRef.current;
+
+        const linePayload = { type, content, persist };
+        if (rehydrateType) {
+            linePayload.rehydrateType = rehydrateType;
+            linePayload.rehydrateData = rehydrateData;
+        }
+
+        dispatch({ type: actions.ADD_LINE, payload: linePayload });
+
+        if (currentAppState.isScrolledToBottom) {
+            dispatch({
+                type: actions.SET_DISPLAYED_LINES,
+                payload: [...currentAppState.displayedLines, linePayload, ...currentAppState.bufferedLines]
+            });
+            dispatch({ type: actions.CLEAR_BUFFERED_LINES });
+        } else {
+            // Add isBufferedNew flag when message is buffered
+            const bufferedPayload = { ...linePayload, isBufferedNew: true };
+            dispatch({ type: actions.ADD_BUFFERED_LINE, payload: bufferedPayload });
+        }
+    }, [appStateRef, dispatch, actions]); // appStateRef is now a dependency instead of state
+
     const updateCommandsSugestions = (payload) => {
         dispatch({
             type: actions.SET_AVAILABLE_COMMANDS,
             payload: payload
         })
     }
-
-    // Modified addMessage signature to include rehydration info
-    const addMessage = (type, content, rehydrateType = null, rehydrateData = null) => {
-        dispatch({
-            type: actions.ADD_LINE,
-            payload: { type, content, rehydrateType, rehydrateData }
-        });
-    };
 
     const handleFrontendCommand = (cmd, args, wsMethods) => {
         switch (cmd) {
@@ -51,13 +69,14 @@ export default function useTerminalActions() {
                         </ul>
                     </>
                 );
-                // Pass raw JSX, TerminalContext will convert to string placeholder for localStorage
-                addMessage('output', helpText);
+                // /help output should not persist
+                addMessage('output', helpText, null, null, false); // persist: false
                 break;
 
             case '/clear':
-                dispatch({ type: actions.CLEAR_LINES });
-                addMessage('system', 'Terminal cleared.'); // Simple string message
+                dispatch({ type: actions.CLEAR_LINES }); // This clears persistent lines
+                // "Terminal cleared" message should not persist
+                addMessage('system', 'Terminal cleared.', null, null, false); // persist: false
                 break;
 
             case '/refresh':
@@ -66,9 +85,9 @@ export default function useTerminalActions() {
 
             case '/connect':
                 if (wsMethods.isConnected) {
-                    addMessage('error', 'Already connected.'); // Simple string message
+                    addMessage('error', 'Already connected.', null, null, false); // persist: false
                 } else {
-                    addMessage('system', 'Connecting to WebSocket...'); // Simple string message
+                    addMessage('system', 'Connecting to WebSocket...', null, null, false); // persist: false
                     wsMethods.connect();
                 }
                 break;
@@ -77,22 +96,22 @@ export default function useTerminalActions() {
                 if (wsMethods.isConnected) {
                     wsMethods.disconnect();
                 } else {
-                    addMessage('error', 'Not connected.'); // Simple string message
+                    addMessage('error', 'Not connected.', null, null, false); // persist: false
                 }
                 break;
 
             case '/status':
                 const statusText = wsMethods.isConnected ? 'Connected' : 'Disconnected';
-                addMessage('system', `Connection status: ${statusText}`); // Simple string message
+                addMessage('system', `Connection status: ${statusText}`, null, null, false); // persist: false
                 break;
 
             case '/debug':
-                // Pass a function, TerminalContext will convert to string placeholder for localStorage
-                addMessage('output', (icon) => (
+                // /debug output should not persist
+                addMessage('output', (icon) => ( // pass function directly, App.js will convert to string placeholder if it needs to persist (but it won't here)
                     <div className="max-h-80 overflow-auto bg-gray-800 p-2 rounded">
                         <JSONViewer data={state} />
                     </div>
-                ));
+                ), null, null, false); // persist: false
                 break;
 
 
@@ -170,7 +189,7 @@ export default function useTerminalActions() {
                 addMessage('error', 'Failed to send command - connection not ready'); // Simple string message
             }
         } else {
-            addMessage('error', `Command not found: ${cmd}. Not connected to a server.`); // Simple string message
+            addMessage('error', `Command not found: ${cmd}. Not connected to a server.`);
         }
 
         dispatch({ type: actions.ADD_TO_HISTORY, payload: command });
@@ -342,12 +361,13 @@ export default function useTerminalActions() {
     const addNotification = (notification) => {
         dispatch({ type: actions.ADD_NOTIFICATION, payload: notification });
     };
+
     return {
         state,
-        addMessage,
+        addMessage, // Return the defined addMessage
         executeCommand,
         handleInputChange,
-        dispatch,
+        dispatch, // Also return dispatch as App.js might need it for other actions
         updateCommandsSugestions,
         addNotification
     };

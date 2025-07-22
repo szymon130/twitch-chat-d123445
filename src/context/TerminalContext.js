@@ -21,26 +21,9 @@ const loadLinesFromLocalStorage = () => {
 const saveLinesToLocalStorage = (lines) => {
     try {
         const linesToSave = lines.slice(Math.max(lines.length - MAX_MESSAGES_IN_LOCAL_STORAGE, 0));
-        const serializableLines = linesToSave.map(line => {
-            // If rehydrateType exists, we assume rehydrateData is serializable JSON
-            if (line.rehydrateType) {
-                return line;
-            } else {
-                // For other content (simple strings, or JSX/functions without rehydrateType),
-                // convert to a simple string placeholder for storage.
-                let serializableContent = line.content;
-                if (typeof line.content === 'function') {
-                    serializableContent = `[Dynamic Output]`; // Placeholder for functions
-                } else if (React.isValidElement(line.content)) {
-                    serializableContent = `[Component Output]`; // Placeholder for JSX elements
-                }
-                return {
-                    type: line.type,
-                    content: serializableContent
-                };
-            }
-        });
-        const serializedLines = JSON.stringify(serializableLines);
+        // No special content serialization needed here.
+        // rehydrateType and rehydrateData will contain serializable JSON objects.
+        const serializedLines = JSON.stringify(linesToSave);
         localStorage.setItem('terminalLines', serializedLines);
     } catch (error) {
         console.error("Error saving to local storage:", error);
@@ -104,7 +87,7 @@ export const actions = {
 };
 
 /**
- * @typedef {{ type: string, content: string | JSX.Element | function, rehydrateType?: string, rehydrateData?: any }} TerminalLine
+ * @typedef {{ type: string, content: string | JSX.Element | function, rehydrateType?: string, rehydrateData?: any, persist?: boolean }} TerminalLine
  */
 
 /**
@@ -115,9 +98,15 @@ export const actions = {
 function reducer(state, action) {
     switch (action.type) {
         case 'ADD_LINE': {
-            const newLines = [...state.lines, action.payload];
-            saveLinesToLocalStorage(newLines);
-            return { ...state, lines: newLines };
+            // Only add to state.lines and save to localStorage if 'persist' is true or undefined (default true)
+            if (action.payload.persist === undefined || action.payload.persist === true) {
+                const newLines = [...state.lines, action.payload];
+                saveLinesToLocalStorage(newLines);
+                return { ...state, lines: newLines };
+            } else {
+                // If persist is false, do not add to state.lines or save to localStorage
+                return state; // No change to state.lines, the message is handled by displayedLines directly
+            }
         }
         case 'SET_COMMAND':
             return { ...state, command: action.payload };

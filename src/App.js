@@ -13,8 +13,15 @@ import NotificationCarousel from './NotificationCarousel';
 const INITIAL_DISPLAY_MESSAGES = 30; // Number of messages to display initially
 
 function TerminalApp() {
-  const { state, executeCommand, handleInputChange, dispatch, addNotification } =
-    useTerminalActions();
+  // stateRef must be defined before useTerminalActions call if passed
+  const stateRef = useRef(null); // Initialize ref
+
+  // Destructure addMessage directly from useTerminalActions hook, passing stateRef
+  const { state, addMessage, executeCommand, handleInputChange, dispatch, addNotification } =
+    useTerminalActions(stateRef);
+
+  // Update ref on every render for latest state snapshot, AFTER 'state' is initialized
+  stateRef.current = state;
 
   const terminalEndRef = useRef(null);
   const terminalWindowRef = useRef(null); // Ref for the scrollable terminal window
@@ -57,10 +64,6 @@ function TerminalApp() {
       });
     }
   }, [state.command, state.activeChannel]);
-
-  // Create a ref for the latest state to be used in callbacks
-  const stateRef = useRef(state);
-  stateRef.current = state;
 
   // Check for channel query parameter on load
   useEffect(() => {
@@ -148,33 +151,7 @@ function TerminalApp() {
     dispatch({ type: actions.REMOVE_NOTIFICATION, payload: id });
   }, [dispatch]);
 
-  // Custom addMessage function to handle buffering and structured message payloads
-  const addMessageWithBuffering = useCallback((type, content, rehydrateType = null, rehydrateData = null) => {
-    const currentState = stateRef.current; // Use the ref for the latest state
-
-    const linePayload = { type, content };
-    if (rehydrateType) {
-        linePayload.rehydrateType = rehydrateType;
-        linePayload.rehydrateData = rehydrateData;
-    }
-
-    // Always add to the full history (state.lines)
-    dispatch({ type: actions.ADD_LINE, payload: linePayload });
-
-    if (currentState.isScrolledToBottom) {
-      // If at bottom, add directly to displayed lines and clear buffer
-      dispatch({
-        type: actions.SET_DISPLAYED_LINES,
-        payload: [...currentState.displayedLines, linePayload, ...currentState.bufferedLines]
-      });
-      dispatch({ type: actions.CLEAR_BUFFERED_LINES });
-    } else {
-      // If not at bottom, add to buffer
-      dispatch({ type: actions.ADD_BUFFERED_LINE, payload: linePayload });
-    }
-  }, [dispatch]);
-
-  // Handle scroll for lazy loading and freezing
+  // handleScroll uses stateRef.current and is already correctly set up with useCallback.
   const handleScroll = useCallback(() => {
     const terminalWindow = terminalWindowRef.current;
     if (terminalWindow) {
@@ -195,14 +172,14 @@ function TerminalApp() {
       }
 
       // Lazy loading: if scrolled near the top
-      if (scrollTop === 0 && stateRef.current.displayedLines.length < stateRef.current.lines.length) {
-        const currentDisplayedCount = state.displayedLines.length; // Use `state` directly here
-        const remainingHistoryCount = state.lines.length - currentDisplayedCount; // Use `state` directly here
+      if (scrollTop === 0 && state.displayedLines.length < state.lines.length) {
+        const currentDisplayedCount = state.displayedLines.length;
+        const remainingHistoryCount = state.lines.length - currentDisplayedCount;
         const messagesToLoad = Math.min(INITIAL_DISPLAY_MESSAGES, remainingHistoryCount);
 
         if (messagesToLoad > 0) {
-          const startIndex = state.lines.length - currentDisplayedCount - messagesToLoad; // Use `state` directly here
-          const newMessages = state.lines.slice(startIndex, startIndex + messagesToLoad); // Use `state` directly here
+          const startIndex = state.lines.length - currentDisplayedCount - messagesToLoad;
+          const newMessages = state.lines.slice(startIndex, startIndex + messagesToLoad);
           dispatch({ type: actions.PREPEND_LINES, payload: newMessages });
 
           // Keep scroll position relatively stable
@@ -215,7 +192,7 @@ function TerminalApp() {
         }
       }
     }
-  }, [state.displayedLines, state.lines, dispatch]); // Added dependencies to useCallback
+  }, [state.displayedLines, state.lines, dispatch]);
 
 
   return (
@@ -223,7 +200,8 @@ function TerminalApp() {
       url="ws://localhost:5000/ws"
       autoConnect={initialAutoConnect}
       onOpen={(event) => {
-        addMessageWithBuffering('success', 'WebSocket connection established');
+        // Use the addMessage function from the hook
+        addMessage('success', 'WebSocket connection established');
         dispatch({
           type: actions.SET_AVAILABLE_COMMANDS,
           payload: {
@@ -240,7 +218,7 @@ function TerminalApp() {
               msg.function,
               msg.data,
               {
-                addMessage: addMessageWithBuffering, // Use the enhanced addMessage
+                addMessage: addMessage, // Use the addMessage from the hook
                 dispatch,
                 state: stateRef.current,
                 addNotification
@@ -248,22 +226,22 @@ function TerminalApp() {
             );
 
             if (!wasHandled) {
-              addMessageWithBuffering('warning', `No handler for function: ${msg.function}`);
+              addMessage('warning', `No handler for function: ${msg.function}`);
             }
           } else {
-            addMessageWithBuffering(msg.type, `SERVER -> CLIENT: ${JSON.stringify(msg)}`);
+            addMessage(msg.type, `SERVER -> CLIENT: ${JSON.stringify(msg)}`);
           }
         } catch (err) {
-          addMessageWithBuffering('error', `Received malformed message: ${event.data}`);
+          addMessage('error', `Received malformed message: ${event.data}`);
         }
       }}
       onClose={(event) => {
-        addMessageWithBuffering('system', `WebSocket connection closed: ${event.reason || 'Unknown reason'}`);
+        addMessage('system', `WebSocket connection closed: ${event.reason || 'Unknown reason'}`);
         const { disconnect, ping, echo, login, ...rest } = state.availableCommands;
         dispatch({ type: actions.SET_AVAILABLE_COMMANDS, payload: rest });
       }}
       onError={(error) => {
-        addMessageWithBuffering('error', `WebSocket error: ${error.message}`);
+        addMessage('error', `WebSocket error: ${error.message}`);
       }}
     >
       {(wsMethods) => (

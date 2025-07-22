@@ -36,15 +36,18 @@ const TerminalLine = ({ type, content, index, rehydrateType, rehydrateData, disp
 
   let renderedContent;
   if (rehydrateType) {
-      // If a rehydrateType is specified, delegate to RehydratedMessage
-      renderedContent = <RehydratedMessage line={{ type, content, rehydrateType, rehydrateData }} dispatch={dispatch} state={state} />;
+    // If a rehydrateType is specified, delegate to RehydratedMessage
+    renderedContent = <RehydratedMessage line={{ type, content, rehydrateType, rehydrateData }} dispatch={dispatch} state={state} />;
   } else if (typeof content === 'function') {
-      // If content is a function (e.g., /debug output during the current session), call it.
-      // This path is taken for messages generated in the current session before being saved/reloaded.
-      renderedContent = content(icon);
+    // If content is a function (e.g., /debug output during the current session), call it.
+    // This path is taken for messages generated in the current session before being saved/reloaded.
+    renderedContent = content(icon);
   } else {
-      // For all other cases (plain strings, or string placeholders from localStorage for JSX/functions)
-      renderedContent = content;
+    // For all other cases (plain strings, or string placeholders from localStorage for JSX/functions)
+    renderedContent =
+      <div className="px-2 py-1">
+        {icon} {content}
+      </div>;
   }
 
 
@@ -53,9 +56,7 @@ const TerminalLine = ({ type, content, index, rehydrateType, rehydrateData, disp
       className={`terminal-line text-sm ${typeClass[type]} break-all`}
       style={{ backgroundColor: index % 2 === 0 ? '#ffffff08' : 'transparent' }}
     >
-      <div className="px-2 py-1">
-        {icon} {renderedContent}
-      </div>
+      {renderedContent}
     </div>
   );
 };

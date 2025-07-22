@@ -1,7 +1,3 @@
-// src/fnHandlers/userMessage.js
-import { Message } from '../helpers/Message'
-
-
 /**
  * Destructured Twitch chat message data.
  *
@@ -51,6 +47,6 @@ export default function handleUserMessage(data, { addMessage, state, dispatch })
         if (data.tags['source-room-id'] !== undefined && data.tags['room-id'] !== data.tags['source-room-id']) return;
 
         // Pass the raw data object for rehydration
-        addMessage('output', null, 'user_message_data', data);
+        addMessage('output', null, 'user_message_data', data, true); // persist: true
     }
 }
