@@ -1,4 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
+// src/App.js
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import SuggestionsList from './components/SuggestionsList';
 import TerminalLine from './components/TerminalLine';
 import WebSocketComponent from './components/WebSocket/WebSocketComponent';
@@ -8,44 +9,39 @@ import useTerminalActions from './hooks/useTerminalActions';
 import { actions } from './context/TerminalContext';
 import NotificationCarousel from './NotificationCarousel';
 
+const INITIAL_DISPLAY_MESSAGES = 30; // Number of messages to display initially
+
 function TerminalApp() {
-  const { state, addMessage, executeCommand, handleInputChange, dispatch, addNotification } =
+  const { state, executeCommand, handleInputChange, dispatch, addNotification } =
     useTerminalActions();
 
   const terminalEndRef = useRef(null);
+  const terminalWindowRef = useRef(null); // Ref for the scrollable terminal window
   const inputRef = useRef(null);
   const formRef = useRef(null);
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.style.height = 'auto';
-      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
-    }
-  }, [state.command]);
-  const [initialAutoConnect, setInitialAutoConnect] = useState(false);
 
-  useEffect(() => {
-    window.__terminalCommandRef = state.command;
-  }, [state.command]);
-
-  // Add character count state
+  // Character count state
   const [charState, setCharState] = useState({
     current: 0,
     max: 500,
     exceeded: false
   });
 
-  // Add this effect to handle textarea auto-resizing and character counting
+  const [initialAutoConnect, setInitialAutoConnect] = useState(false);
+
+  useEffect(() => {
+    window.__terminalCommandRef = state.command;
+  }, [state.command]);
+
+  // Handle textarea auto-resizing and character counting
   useEffect(() => {
     if (inputRef.current) {
-      // Auto-resize
       inputRef.current.style.height = 'auto';
       inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
 
-      // Character counting
       const command = state.command;
       let charCount = command.length;
 
-      // Adjust for /say commands
       if (command.startsWith('/say') && state.activeChannel) {
         const prefix = `/say #${state.activeChannel} `;
         if (command.startsWith(prefix)) {
@@ -61,9 +57,9 @@ function TerminalApp() {
     }
   }, [state.command, state.activeChannel]);
 
-  // Create a ref for the latest state
+  // Create a ref for the latest state to be used in callbacks
   const stateRef = useRef(state);
-  stateRef.current = state; // Update ref on every render
+  stateRef.current = state;
 
   // Check for channel query parameter on load
   useEffect(() => {
@@ -71,14 +67,16 @@ function TerminalApp() {
     const channel = urlParams.get('channel');
     if (channel) {
       dispatch({ type: actions.SET_ACTIVE_CHANNEL, payload: channel });
-      setInitialAutoConnect(true); // Set flag for auto-connect
+      setInitialAutoConnect(true);
     }
   }, [dispatch]);
 
-  // Scroll to bottom when lines change
+  // Scroll to bottom when displayedLines changes AND when isScrolledToBottom is true
   useEffect(() => {
-    terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [state.lines]);
+    if (state.isScrolledToBottom) {
+      terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [state.displayedLines, state.isScrolledToBottom]);
 
   // Handle click outside suggestions
   useEffect(() => {
@@ -145,16 +143,81 @@ function TerminalApp() {
     }
   };
 
-  const removeNotification = (id) => {
+  const removeNotification = useCallback((id) => {
     dispatch({ type: actions.REMOVE_NOTIFICATION, payload: id });
-  };
+  }, [dispatch]);
+
+  // Custom addMessage function to handle buffering
+  const addMessageWithBuffering = useCallback((type, content) => {
+    const currentState = stateRef.current; // Use the ref for the latest state
+
+    // Always add to the full history (state.lines)
+    dispatch({ type: actions.ADD_LINE, payload: { type, content } });
+
+    if (currentState.isScrolledToBottom) {
+      // If at bottom, add directly to displayed lines and clear buffer
+      // Ensure the payload passed to SET_DISPLAYED_LINES is an array of {type, content} objects
+      dispatch({
+        type: actions.SET_DISPLAYED_LINES,
+        payload: [...currentState.displayedLines, { type, content }, ...currentState.bufferedLines] // Corrected: pass {type, content}
+      });
+      dispatch({ type: actions.CLEAR_BUFFERED_LINES });
+    } else {
+      // If not at bottom, add to buffer
+      dispatch({ type: actions.ADD_BUFFERED_LINE, payload: { type, content } });
+    }
+  }, [dispatch]);
+
+  // Handle scroll for lazy loading and freezing
+  const handleScroll = useCallback(() => {
+    const terminalWindow = terminalWindowRef.current;
+    if (terminalWindow) {
+      const { scrollTop, scrollHeight, clientHeight } = terminalWindow;
+      const isAtBottom = scrollHeight - scrollTop <= clientHeight + 1; // +1 for a small tolerance
+
+      if (isAtBottom !== stateRef.current.isScrolledToBottom) {
+        dispatch({ type: actions.SET_SCROLLED_TO_BOTTOM, payload: isAtBottom });
+      }
+
+      // If scrolled to bottom and there are buffered messages, display them
+      if (isAtBottom && stateRef.current.bufferedLines.length > 0) {
+        dispatch({
+          type: actions.SET_DISPLAYED_LINES,
+          payload: [...stateRef.current.displayedLines, ...stateRef.current.bufferedLines]
+        });
+        dispatch({ type: actions.CLEAR_BUFFERED_LINES });
+      }
+
+      // Lazy loading: if scrolled near the top
+      if (scrollTop === 0 && stateRef.current.displayedLines.length < stateRef.current.lines.length) {
+        const currentDisplayedCount = stateRef.current.displayedLines.length;
+        const remainingHistoryCount = stateRef.current.lines.length - currentDisplayedCount;
+        const messagesToLoad = Math.min(INITIAL_DISPLAY_MESSAGES, remainingHistoryCount);
+
+        if (messagesToLoad > 0) {
+          const startIndex = stateRef.current.lines.length - currentDisplayedCount - messagesToLoad;
+          const newMessages = stateRef.current.lines.slice(startIndex, startIndex + messagesToLoad);
+          dispatch({ type: actions.PREPEND_LINES, payload: newMessages });
+
+          // Keep scroll position relatively stable
+          const oldScrollHeight = scrollHeight;
+          requestAnimationFrame(() => {
+            if (terminalWindowRef.current) {
+              terminalWindowRef.current.scrollTop = terminalWindowRef.current.scrollHeight - oldScrollHeight;
+            }
+          });
+        }
+      }
+    }
+  }, [dispatch]);
+
 
   return (
     <WebSocketComponent
       url="ws://localhost:5000/ws"
-      autoConnect={initialAutoConnect} // Pass auto-connect flag
+      autoConnect={initialAutoConnect}
       onOpen={(event) => {
-        addMessage('success', 'WebSocket connection established');
+        addMessageWithBuffering('success', 'WebSocket connection established');
         dispatch({
           type: actions.SET_AVAILABLE_COMMANDS,
           payload: {
@@ -171,30 +234,30 @@ function TerminalApp() {
               msg.function,
               msg.data,
               {
-                addMessage,
+                addMessage: addMessageWithBuffering, // Use the enhanced addMessage
                 dispatch,
                 state: stateRef.current,
-                addNotification // Add this to pass to handlers
+                addNotification
               }
             );
 
             if (!wasHandled) {
-              addMessage('warning', `No handler for function: ${msg.function}`);
+              addMessageWithBuffering('warning', `No handler for function: ${msg.function}`);
             }
           } else {
-            addMessage(msg.type, `SERVER -> CLIENT: ${JSON.stringify(msg)}`);
+            addMessageWithBuffering(msg.type, `SERVER -> CLIENT: ${JSON.stringify(msg)}`);
           }
         } catch (err) {
-          addMessage('error', `Received malformed message: ${event.data}`);
+          addMessageWithBuffering('error', `Received malformed message: ${event.data}`);
         }
       }}
       onClose={(event) => {
-        addMessage('system', `WebSocket connection closed: ${event.reason || 'Unknown reason'}`);
+        addMessageWithBuffering('system', `WebSocket connection closed: ${event.reason || 'Unknown reason'}`);
         const { disconnect, ping, echo, login, ...rest } = state.availableCommands;
         dispatch({ type: actions.SET_AVAILABLE_COMMANDS, payload: rest });
       }}
       onError={(error) => {
-        addMessage('error', `WebSocket error: ${error.message}`);
+        addMessageWithBuffering('error', `WebSocket error: ${error.message}`);
       }}
     >
       {(wsMethods) => (
@@ -219,8 +282,8 @@ function TerminalApp() {
             </div>
 
             {/* Output */}
-            <div id="terminal-window" className="flex-grow overflow-y-auto" style={{ overflowX: 'hidden' }}>
-              {state.lines.map((line, index) => (
+            <div id="terminal-window" ref={terminalWindowRef} className="flex-grow overflow-y-auto" style={{ overflowX: 'hidden' }} onScroll={handleScroll}>
+              {state.displayedLines.map((line, index) => (
                 <TerminalLine key={index} type={line.type} content={line.content} index={index} />
               ))}
               <div ref={terminalEndRef} />

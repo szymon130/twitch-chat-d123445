@@ -1,85 +1,61 @@
-// src\context\TerminalContext.js
-
-/**
- * 
- * @typedef {{ type: string, content: string }} TerminalLine
- * 
- * @typedef {{
- *   [key: string]: { description: string, params: string[] }
- * }} AvailableCommands
- * 
- * @typedef {{ name: string | function , description: string }} Suggestion
- *
- * @typedef { { type: 'SET_ACTIVE_CHANNEL', payload: string | null } |{ type: 'ADD_LINE', payload: TerminalLine } | { type: 'SET_COMMAND', payload: string } | { type: 'ADD_TO_HISTORY', payload: string } | { type: 'SET_HISTORY_INDEX', payload: number } | { type: 'SET_AVAILABLE_COMMANDS', payload: AvailableCommands } | { type: 'SET_SUGGESTIONS', payload: Suggestion[] } | { type: 'SET_ACTIVE_SUGGESTION', payload: number } | { type: 'SET_SHOW_SUGGESTIONS', payload: boolean } | { type: 'CLEAR_LINES' } } TerminalAction
- *
- * 
- * @typedef {{
- *   [channel: string]: {
- *     [platform: string]: Array<{
- *       commandId: string,
- *       aliases: string[],
- *       description: string,
- *       // ... other properties
- *     }>
- *   }
- * }} AvailableCommandsChannel
- *
- * @typedef {{
- *   lines: TerminalLine[],
- *   command: string,
- *   commandHistory: string[],
- *   historyIndex: number,
- *   availableCommands: AvailableCommands,
- *   availableCommandsChannel: AvailableCommandsChannel, // NEW
- *   suggestions: Suggestion[],
- *   activeSuggestionIndex: number,
- *   showSuggestions: boolean,
- *   activeChannel: string
- * }} TerminalState
- * 
- * @typedef {{
- *   ADD_LINE: string,
- *   SET_COMMAND: string,
- *   ADD_TO_HISTORY: string,
- *   SET_HISTORY_INDEX: string,
- *   SET_AVAILABLE_COMMANDS: string,
- *   SET_SUGGESTIONS: string,
- *   SET_ACTIVE_SUGGESTION: string,
- *   SET_SHOW_SUGGESTIONS: string,
- *   SET_ACTIVE_CHANNEL: string,
- *   CLEAR_LINES: string,
- *   DELETE_CHANNEL_AVAILABLE_EMOTES_CHANNEL: string,
- *   SET_AVAILABLE_EMOTES: string,
- *   ADD_NOTIFICATION: string,
- *   REMOVE_NOTIFICATION: string
- * }} TerminalActions
- * 
- * @typedef {{
- *   state: TerminalState,
- *   dispatch: React.Dispatch<TerminalAction>,
- *   actions: TerminalActions
- * }} TerminalContextValue
- * 
- * @typedef {Object} Emote
- * @property {string} code - Emote code (e.g., "Kappa")
- * @property {boolean} animated - Whether the emote is animated
- * @property {number} provider - Emote provider ID
- * @property {Array<{size: string, url: string}>} urls - Emote image URLs
- * @property {boolean} zero_width - If emote is zero-width
- * 
- * @typedef {Object} AvailableEmotes
- * @property {Emote[]} global - Global emotes
- * @property {Emote[]} [channelName] - Channel-specific emotes
-*/
-
+// src/context/TerminalContext.js
 
 import React, { createContext, useReducer, useContext } from 'react';
 
+const MAX_MESSAGES_IN_LOCAL_STORAGE = 500;
+const INITIAL_DISPLAY_MESSAGES = 30;
+
+const loadLinesFromLocalStorage = () => {
+    try {
+        const serializedLines = localStorage.getItem('terminalLines');
+        if (serializedLines === null) {
+            return [{ type: 'system', content: 'Terminal initialized. Type "/help" for a list of commands.' }];
+        }
+        return JSON.parse(serializedLines);
+    } catch (error) {
+        console.error("Error loading from local storage:", error);
+        return [{ type: 'system', content: 'Terminal initialized. Type "/help" for a list of commands.' }];
+    }
+};
+
+const saveLinesToLocalStorage = (lines) => {
+    try {
+        const linesToSave = lines.slice(Math.max(lines.length - MAX_MESSAGES_IN_LOCAL_STORAGE, 0));
+        // Map over linesToSave to handle content that might be functions or JSX elements
+        const serializableLines = linesToSave.map(line => {
+            let serializableContent = line.content;
+            // Check for React elements (JSX)
+            if (React.isValidElement(line.content)) {
+                // Convert JSX content to a placeholder string for storage
+                // For more advanced use cases, you might want a custom serializer for JSX
+                serializableContent = `[JSX: ${line.type} message]`;
+            } else if (typeof line.content === 'function') {
+                // Convert function content to a placeholder string for storage
+                serializableContent = `[Function: ${line.type} message]`;
+            } else if (line.content === undefined) {
+                 // Ensure undefined content is also handled as an empty string or null
+                serializableContent = '';
+            }
+            return {
+                type: line.type,
+                content: serializableContent // Store the serializable version
+            };
+        });
+        const serializedLines = JSON.stringify(serializableLines);
+        localStorage.setItem('terminalLines', serializedLines);
+    } catch (error) {
+        console.error("Error saving to local storage:", error);
+    }
+};
+
+const initialFullLines = loadLinesFromLocalStorage();
+
 const initialState = {
     notifications: [],
-    lines: [
-        { type: 'system', content: 'Terminal initialized. Type "/help" for a list of commands.' }
-    ],
+    lines: initialFullLines, // Full history of lines up to MAX_MESSAGES_IN_LOCAL_STORAGE
+    displayedLines: initialFullLines.slice(Math.max(initialFullLines.length - INITIAL_DISPLAY_MESSAGES, 0)), // Only show last 30 initially
+    bufferedLines: [], // New messages buffered when not scrolled to bottom
+    isScrolledToBottom: true, // Track if user is at the bottom of the scroll
     command: '',
     commandHistory: [],
     historyIndex: -1,
@@ -120,49 +96,43 @@ export const actions = {
     ADD_NOTIFICATION: 'ADD_NOTIFICATION',
     REMOVE_NOTIFICATION: 'REMOVE_NOTIFICATION',
     SET_USER_DATA: 'SET_USER_DATA',
-    DELETE_USER_DATA: 'DELETE_USER_DATA'
+    DELETE_USER_DATA: 'DELETE_USER_DATA',
+    SET_SCROLLED_TO_BOTTOM: 'SET_SCROLLED_TO_BOTTOM', // New action
+    SET_DISPLAYED_LINES: 'SET_DISPLAYED_LINES',     // New action
+    ADD_BUFFERED_LINE: 'ADD_BUFFERED_LINE',         // New action
+    CLEAR_BUFFERED_LINES: 'CLEAR_BUFFERED_LINES',   // New action
+    PREPEND_LINES: 'PREPEND_LINES', // New action for lazy loading
 };
 
-/**
- * @param {TerminalState} state
- * @param {TerminalAction} action
- * @returns {TerminalState}
- */
 function reducer(state, action) {
     switch (action.type) {
-        case 'ADD_LINE':
-            return { ...state, lines: [...state.lines, action.payload] };
-
+        case 'ADD_LINE': {
+            const newLines = [...state.lines, action.payload];
+            saveLinesToLocalStorage(newLines);
+            return { ...state, lines: newLines };
+        }
         case 'SET_COMMAND':
             return { ...state, command: action.payload };
-
         case 'ADD_TO_HISTORY':
             return {
                 ...state,
                 commandHistory: [action.payload, ...state.commandHistory],
                 historyIndex: -1
             };
-
         case 'SET_HISTORY_INDEX':
             return { ...state, historyIndex: action.payload };
-
         case 'SET_AVAILABLE_COMMANDS':
             return { ...state, availableCommands: action.payload };
-
         case 'SET_SUGGESTIONS':
             return { ...state, suggestions: action.payload };
-
         case 'SET_ACTIVE_SUGGESTION':
             return { ...state, activeSuggestionIndex: action.payload };
-
         case 'SET_SHOW_SUGGESTIONS':
             return { ...state, showSuggestions: action.payload };
-
         case 'CLEAR_LINES':
-            return { ...state, lines: [] };
-
+            saveLinesToLocalStorage([]); // Clear local storage too
+            return { ...state, lines: [], displayedLines: [], bufferedLines: [] };
         case 'SET_AVAILABLE_COMMANDS_CHANNEL':
-            // Merge new channel commands with existing ones
             return {
                 ...state,
                 availableCommandsChannel: {
@@ -170,80 +140,55 @@ function reducer(state, action) {
                     ...action.payload
                 }
             };
-
         case 'SET_ACTIVE_CHANNEL':
             return { ...state, activeChannel: action.payload };
-
         case 'SET_AVAILABLE_EMOTES':
-            return {
-                ...state,
-                availableEmotes: action.payload
-            };
-
+            return { ...state, availableEmotes: action.payload };
         case 'DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL': {
-            // Create a copy of the current state
             const updatedCommands = { ...state.availableCommandsChannel };
-
-            // Remove the specified channel if it exists
             if (action.payload && updatedCommands[action.payload]) {
                 delete updatedCommands[action.payload];
             }
-
-            return {
-                ...state,
-                availableCommandsChannel: updatedCommands
-            };
+            return { ...state, availableCommandsChannel: updatedCommands };
         }
-
         case 'ADD_NOTIFICATION':
-            // Add new notification to the end
-            return {
-                ...state,
-                notifications: [...state.notifications, action.payload]
-            };
-
+            return { ...state, notifications: [...state.notifications, action.payload] };
         case 'REMOVE_NOTIFICATION':
-            // Remove the specified notification
-            return {
-                ...state,
-                notifications: state.notifications.filter(n => n.id !== action.payload)
-            };
-
+            return { ...state, notifications: state.notifications.filter(n => n.id !== action.payload) };
         case 'SET_USER_DATA':
             return {
                 ...state,
-                userDataByChannel: {
-                    ...state.userDataByChannel,
-                    ...action.payload
-                }
+                userDataByChannel: { ...state.userDataByChannel, ...action.payload }
             };
-
-        case 'DELETE_USER_DATA':
+        case 'DELETE_USER_DATA': {
             const updatedUserData = { ...state.userDataByChannel };
             if (updatedUserData[action.payload]) {
                 delete updatedUserData[action.payload];
             }
-            return {
-                ...state,
-                userDataByChannel: updatedUserData
-            };
-
+            return { ...state, userDataByChannel: updatedUserData };
+        }
+        case 'SET_SCROLLED_TO_BOTTOM':
+            return { ...state, isScrolledToBottom: action.payload };
+        case 'SET_DISPLAYED_LINES':
+            return { ...state, displayedLines: action.payload };
+        case 'ADD_BUFFERED_LINE':
+            return { ...state, bufferedLines: [...state.bufferedLines, action.payload] };
+        case 'CLEAR_BUFFERED_LINES':
+            return { ...state, bufferedLines: [] };
+        case 'PREPEND_LINES':
+            return { ...state, displayedLines: [...action.payload, ...state.displayedLines] };
         default:
             console.error("Reducer got invalid action type: " + action.type + "\n - No changes to state were done.");
             return state;
     }
 }
 
-/** 
- * @type {React.Dispatch<TerminalAction>} 
- */
 const dummyDispatch = () => { };
 
-/** @type {TerminalContextValue} */
 const defaultContextValue = {
     state: initialState,
-    dispatch: dummyDispatch,  // dummy dispatch function
-    actions: actions          // if you have predefined actions
+    dispatch: dummyDispatch,
+    actions: actions
 };
 
 const TerminalContext = createContext(defaultContextValue);

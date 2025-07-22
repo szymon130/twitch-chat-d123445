@@ -1,13 +1,13 @@
 // src/components/TerminalLine.js
 import React from 'react';
-import MessageIcon from './MessageIcon'
+import MessageIcon from './MessageIcon';
 
 /**
  * A single line in the terminal output.
  *
  * @param {Object} props - The component props.
  * @param {'success' | 'output' | 'command' | 'frontend-error' | 'message' | 'system' | 'error'| 'plusone'| 'minusone'| 'sword' | 'none'} props.type - The type of the terminal line, used for styling and behavior.
- * @param {string | JSX.Element} props.content - The content to display, can be plain text or a JSX element.
+ * @param {string | JSX.Element | function} props.content - The content to display, can be plain text, a JSX element, or a function that returns JSX.
  * @returns {JSX.Element} The rendered terminal line.
  */
 const TerminalLine = ({ type, content, index }) => {
@@ -28,17 +28,19 @@ const TerminalLine = ({ type, content, index }) => {
   };
 
   const icon = type === 'command' ? <span className="text-cyan-400">$</span> : <MessageIcon type={type} />;
+
   return (
     <div
       className={`terminal-line text-sm ${typeClass[type]} break-all`}
       style={{ backgroundColor: index % 2 === 0 ? '#ffffff08' : 'transparent' }}
     >
-      {typeof content === 'string' || React.isValidElement(content) ? (
+      {/* Corrected: Check if content is a function first, then render accordingly */}
+      {typeof content === 'function' ? (
+        <>{content(icon)}</>
+      ) : (
         <div className="px-2 py-1">
           {icon} {content}
         </div>
-      ) : (
-        content(icon)
       )}
     </div>
   );
