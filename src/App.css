@@ -39,3 +39,7 @@
 .animate-pop {
   animation: pop 0.1s ease-out forwards;
 }
+
+.buffered-new-message {
+  background-color: #acff2f28; /* Greenish background */
+}

@@ -7,6 +7,7 @@ import channelExited from './channelExited';
 import availableEmotes from './availableEmotes';
 import userData from './userData';
 import joinedChannels from './joinedChannels';
+import joinPart from './joinPart'
 
 const fnHandlers = {
     user_message: handleUserMessage,
@@ -17,7 +18,8 @@ const fnHandlers = {
     channel_exited: channelExited,
     available_emotes: availableEmotes,
     user_data: userData,
-    joined_channels: joinedChannels
+    joined_channels: joinedChannels,
+    join_part: joinPart
     // Add other handlers here as needed
 };
 
@@ -27,7 +29,7 @@ export default function handleFnCall(fnName, data, context) {
     if (handler) {
         handler(data, {
             ...context,
-            addNotification: context.addNotification // Ensure this is passed
+            // addNotification: context.addNotification // Removed
         });
         return true;
     }

@@ -3,7 +3,7 @@ import lightenColor from './lightenColor'
 import HighlightWords from './HighlightWords'
 import Image from './Image'
 
-export const Message = ({ user, channel, formatted_time, message_part, channel_color, user_color, tags, dispatch, addMessage, state }) => {
+export const Message = ({ user, channel, formatted_time, message_part, channel_color, user_color, tags, dispatch, addMessage, state, isSelected, isReplyingAccepted }) => {
 
     const { availableEmotes } = state;
     const userData = state.userDataByChannel[channel];
@@ -40,10 +40,13 @@ export const Message = ({ user, channel, formatted_time, message_part, channel_c
         return window.__terminalCommandRef || '';
     };
 
+    // Determine the background color based on isReplyingAccepted
+    const backgroundColor = isReplyingAccepted ? '#ffff001a' : (state.activeChannel === channel ? '#a970ff10' : ''); // Yellowish background for accepted reply
+
     return (
-        <div id={tags.id} className="relative px-2 pb-1 pt-3" style={{
+        <div id={tags.id} className={`relative px-2 pb-1 pt-3 ${isSelected ? 'border border-dashed border-yellow-400' : ''}`} style={{
             borderLeft: state.activeChannel === channel ? '3px solid #a970ff' : '',
-            backgroundColor: state.activeChannel === channel ? '#a970ff10' : ''
+            backgroundColor: backgroundColor // Apply dynamic background color
         }}>
             <div className="text-gray-400 absolute" style={{
                 fontSize: '12px', left: '0.5rem', top: '-2px'
@@ -79,16 +82,11 @@ export const Message = ({ user, channel, formatted_time, message_part, channel_c
                     dispatch({ type: actions.SET_COMMAND, payload: `/say #${channel} ${username} ` });
                 }
             }} style={{ color: lightenColor(tags.color || user_color, 40), cursor: 'pointer', fontWeight: 'bolder' }}>{`${tags['display-name'] || user}`}</span>
-            : {
-                HighlightWords(
-                    {
-                        textInput: renderMessageWithEmotes(message_part),
-                        wordsToStyle: [/^@?poprostu_szymon_xd$/gi],
-                        className: 'highlighted'
-                    }
-                )
-
-            }
+            : <HighlightWords
+                textInput={renderMessageWithEmotes(message_part)}
+                wordsToStyle={[/^@?poprostu_szymon_xd$/gi]}
+                className='highlighted'
+              />
         </div>
     );
 }

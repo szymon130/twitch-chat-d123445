@@ -3,7 +3,7 @@ import { Message } from '../helpers/Message';
 import Image from '../helpers/Image';
 
 // Ensure `state` and `dispatch` are passed down for `Message` component's internal logic
-const RehydratedMessage = ({ line, dispatch, state }) => {
+const RehydratedMessage = ({ line, dispatch, state, isSelected, isReplyingAccepted }) => {
     const { type, content, rehydrateType, rehydrateData } = line;
 
     if (rehydrateType === 'user_message_data') {
@@ -13,6 +13,8 @@ const RehydratedMessage = ({ line, dispatch, state }) => {
                 user={user} channel={channel} formatted_time={formatted_time}
                 message_part={message_part} channel_color={channel_color}
                 user_color={user_color} tags={tags} dispatch={dispatch} state={state}
+                isSelected={isSelected} // Pass isSelected prop
+                isReplyingAccepted={isReplyingAccepted} // Pass isReplyingAccepted prop
             />
         );
     } else if (rehydrateType === 'joined_channels_data') {

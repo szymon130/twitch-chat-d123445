@@ -13,7 +13,7 @@ import React from 'react';
  * @param {boolean} [props.caseSensitive=false] - Optional. If true, string word matching will be case-sensitive. Regular expressions will use their own flags. Defaults to false.
  * @returns {React.ReactNode} A JSX element containing the processed text with highlighted words.
  */
-const HighlightWords = ({ textInput, wordsToStyle, className, style = {}, caseSensitive = false }) => {
+const HighlightWords = React.memo(({ textInput, wordsToStyle, className, style = {}, caseSensitive = false }) => {
     // If no input is provided, return null to render nothing.
     if (textInput === null || textInput === undefined) {
         return null;
@@ -112,6 +112,5 @@ const HighlightWords = ({ textInput, wordsToStyle, className, style = {}, caseSe
     else {
         return <>{renderChildren(textInput)}</>;
     }
-};
-
+});
 export default HighlightWords;

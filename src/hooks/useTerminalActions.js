@@ -50,152 +50,7 @@ export default function useTerminalActions(appStateRef) { // Renamed parameter f
         })
     }
 
-    const handleFrontendCommand = (cmd, args, wsMethods) => {
-        switch (cmd) {
-            case '/help':
-                const helpText = (
-                    <>
-                        <h3>Available commands</h3>
-                        <ul>
-                            {Object.entries(state.availableCommands).map(
-                                ([name, { description, params }]) => (
-                                    <li key={name}>
-                                        <span style={{ color: 'lime' }}>{name.padEnd(12)}</span>
-                                        <span style={{ color: 'orange' }}>{params.join(" ")}</span> -
-                                        <span style={{ color: 'gray' }}>{` ${description}`}</span>
-                                    </li>
-                                )
-                            )}
-                        </ul>
-                    </>
-                );
-                // /help output should not persist
-                addMessage('output', helpText, null, null, false); // persist: false
-                break;
-
-            case '/clear':
-                dispatch({ type: actions.CLEAR_LINES }); // This clears persistent lines
-                // "Terminal cleared" message should not persist
-                addMessage('system', 'Terminal cleared.', null, null, false); // persist: false
-                break;
-
-            case '/refresh':
-                document.location.reload();
-                break;
-
-            case '/connect':
-                if (wsMethods.isConnected) {
-                    addMessage('error', 'Already connected.', null, null, false); // persist: false
-                } else {
-                    addMessage('system', 'Connecting to WebSocket...', null, null, false); // persist: false
-                    wsMethods.connect();
-                }
-                break;
-
-            case '/disconnect':
-                if (wsMethods.isConnected) {
-                    wsMethods.disconnect();
-                } else {
-                    addMessage('error', 'Not connected.', null, null, false); // persist: false
-                }
-                break;
-
-            case '/status':
-                const statusText = wsMethods.isConnected ? 'Connected' : 'Disconnected';
-                addMessage('system', `Connection status: ${statusText}`, null, null, false); // persist: false
-                break;
-
-            case '/debug':
-                // /debug output should not persist
-                addMessage('output', (icon) => ( // pass function directly, App.js will convert to string placeholder if it needs to persist (but it won't here)
-                    <div className="max-h-80 overflow-auto bg-gray-800 p-2 rounded">
-                        <JSONViewer data={state} />
-                    </div>
-                ), null, null, false); // persist: false
-                break;
-
-
-            case '/join':
-                if (cmd === "/join" && (args[0] === "@" || args[0] === undefined) && state.activeChannel) {
-                    addMessage('join', ` -> [${state.activeChannel}]`); // Simple string message
-                    const success = wsMethods.sendMessage({ command: `/join`, payload: `#${state.activeChannel}` });
-                    if (!success) {
-                        addMessage('error', 'Failed to send message - connection not ready'); // Simple string message
-                    }
-                    return;
-                }
-
-            // eslint-disable-next-line
-            case '/say':
-                if (args.length > 0 && args[0].startsWith('#')) {
-                    const channel = args[0].substring(1);
-                    if (typeof channel === 'string')
-                        dispatch({ type: actions.SET_ACTIVE_CHANNEL, payload: channel });
-                }
-            // Fall through to default case to send the message
-            default:
-                if (wsMethods.isConnected) {
-                    const payload = args.join(' ');
-                    const success = wsMethods.sendMessage({ command: cmd, payload });
-                    if (!success) {
-                        addMessage('error', 'Failed to send message - connection not ready'); // Simple string message
-                    }
-                } else {
-                    addMessage('error', `Cannot execute '${cmd}'. Not connected to a server.`); // Simple string message
-                }
-        }
-    };
-
-    const executeCommand = (command, wsMethods) => {
-        if (!command.trim()) return;
-
-        // Apply character limit validation
-        let charCount = command.length;
-        let message = command;
-
-        if (!command.startsWith('/') || command.startsWith('/say')) {
-            if (command.startsWith('/say') && state.activeChannel) {
-                const prefix = `/say #${state.activeChannel} `;
-                if (command.startsWith(prefix)) {
-                    message = command.substring(prefix.length);
-                    charCount = message.length;
-                }
-            }
-
-            if (charCount > 500) {
-                addMessage('error', `Message exceeds 500 characters (${charCount}/500)`); // Simple string message
-                return;
-            }
-        }
-
-        addMessage('command', command); // Simple string message
-        dispatch({ type: actions.SET_SHOW_SUGGESTIONS, payload: false });
-
-        const [cmd, ...args] = command.trim().split(' ');
-
-
-        if (Object.keys(state.availableCommands).includes(cmd)) {
-            handleFrontendCommand(cmd, args, wsMethods);
-        } else if (wsMethods.isConnected) {
-            const payload = args.join(' ');
-
-            let success = false;
-            if (cmd[0] !== '/' && state.activeChannel) {
-                success = wsMethods.sendMessage({ command: `/say`, payload: `#${state.activeChannel} ${command}` });
-                if (success) addMessage('system', `TY -> [${state.activeChannel}] ${command}`); // Simple string message
-            }
-            else success = wsMethods.sendMessage({ command: cmd, payload });
-            if (!success) {
-                addMessage('error', 'Failed to send command - connection not ready'); // Simple string message
-            }
-        } else {
-            addMessage('error', `Command not found: ${cmd}. Not connected to a server.`);
-        }
-
-        dispatch({ type: actions.ADD_TO_HISTORY, payload: command });
-        dispatch({ type: actions.SET_COMMAND, payload: '' });
-    };
-
+    // Moved handleInputChange definition here, before executeCommand
     const handleInputChange = (value) => {
         dispatch({ type: actions.SET_COMMAND, payload: value });
 
@@ -357,6 +212,152 @@ export default function useTerminalActions(appStateRef) { // Renamed parameter f
         dispatch({ type: actions.SET_ACTIVE_SUGGESTION, payload: 0 });
     };
 
+    const handleFrontendCommand = (cmd, args, wsMethods) => {
+        switch (cmd) {
+            case '/help':
+                const helpText = (
+                    <>
+                        <h3>Available commands</h3>
+                        <ul>
+                            {Object.entries(state.availableCommands).map(
+                                ([name, { description, params }]) => (
+                                    <li key={name}>
+                                        <span style={{ color: 'lime' }}>{name.padEnd(12)}</span>
+                                        <span style={{ color: 'orange' }}>{params.join(" ")}</span> -
+                                        <span style={{ color: 'gray' }}>{` ${description}`}</span>
+                                    </li>
+                                )
+                            )}
+                        </ul>
+                    </>
+                );
+                // /help output should not persist
+                addMessage('output', helpText, null, null, false); // persist: false
+                break;
+
+            case '/clear':
+                dispatch({ type: actions.CLEAR_LINES }); // This clears persistent lines
+                // "Terminal cleared" message should not persist
+                addMessage('system', 'Terminal cleared.', null, null, false); // persist: false
+                break;
+
+            case '/refresh':
+                document.location.reload();
+                break;
+
+            case '/connect':
+                if (wsMethods.isConnected) {
+                    addMessage('error', 'Already connected.', null, null, false); // persist: false
+                } else {
+                    addMessage('system', 'Connecting to WebSocket...', null, null, false); // persist: false
+                    wsMethods.connect();
+                }
+                break;
+
+            case '/disconnect':
+                if (wsMethods.isConnected) {
+                    wsMethods.disconnect();
+                } else {
+                    addMessage('error', 'Not connected.', null, null, false); // persist: false
+                }
+                break;
+
+            case '/status':
+                const statusText = wsMethods.isConnected ? 'Connected' : 'Disconnected';
+                addMessage('system', `Connection status: ${statusText}`, null, null, false); // persist: false
+                break;
+
+            case '/debug':
+                // /debug output should not persist
+                addMessage('output', (icon) => ( // pass function directly, App.js will convert to string placeholder if it needs to persist (but it won't here)
+                    <div className="max-h-80 overflow-auto bg-gray-800 p-2 rounded">
+                        <JSONViewer data={state} />
+                    </div>
+                ), null, null, false); // persist: false
+                break;
+
+
+            case '/join':
+                if (cmd === "/join" && (args[0] === "@" || args[0] === undefined) && state.activeChannel) {
+                    addMessage('join', ` -> [${state.activeChannel}]`); // Simple string message
+                    const success = wsMethods.sendMessage({ command: `/join`, payload: `#${state.activeChannel}` });
+                    if (!success) {
+                        addMessage('error', 'Failed to send message - connection not ready'); // Simple string message
+                    }
+                    return;
+                }
+
+            // eslint-disable-next-line
+            case '/say':
+                if (args.length > 0 && args[0].startsWith('#')) {
+                    const channel = args[0].substring(1);
+                    if (typeof channel === 'string')
+                        dispatch({ type: actions.SET_ACTIVE_CHANNEL, payload: channel });
+                }
+            // Fall through to default case to send the message
+            default:
+                if (wsMethods.isConnected) {
+                    const payload = args.join(' ');
+                    const success = wsMethods.sendMessage({ command: cmd, payload });
+                    if (!success) {
+                        addMessage('error', 'Failed to send message - connection not ready'); // Simple string message
+                    }
+                } else {
+                    addMessage('error', `Cannot execute '${cmd}'. Not connected to a server.`); // Simple string message
+                }
+        }
+    };
+
+    const executeCommand = (command, wsMethods) => {
+        if (!command.trim()) return;
+
+        // Apply character limit validation
+        let charCount = command.length;
+        let message = command;
+
+        if (!command.startsWith('/') || command.startsWith('/say')) {
+            if (command.startsWith('/say') && state.activeChannel) {
+                const prefix = `/say #${state.activeChannel} `;
+                if (command.startsWith(prefix)) {
+                    message = command.substring(prefix.length);
+                    charCount = message.length;
+                }
+            }
+
+            if (charCount > 500) {
+                addMessage('error', `Message exceeds 500 characters (${charCount}/500)`); // Simple string message
+                return;
+            }
+        }
+
+        addMessage('command', command); // Simple string message
+        dispatch({ type: actions.SET_SHOW_SUGGESTIONS, payload: false });
+
+        const [cmd, ...args] = command.trim().split(' ');
+
+
+        if (Object.keys(state.availableCommands).includes(cmd)) {
+            handleFrontendCommand(cmd, args, wsMethods);
+        } else if (wsMethods.isConnected) {
+            const payload = args.join(' ');
+
+            let success = false;
+            if (cmd[0] !== '/' && state.activeChannel) {
+                success = wsMethods.sendMessage({ command: `/say`, payload: `#${state.activeChannel} ${command}` });
+                if (success) addMessage('system', `TY -> [${state.activeChannel}] ${command}`); // Simple string message
+            }
+            else success = wsMethods.sendMessage({ command: cmd, payload });
+            if (!success) {
+                addMessage('error', 'Failed to send command - connection not ready'); // Simple string message
+            }
+        } else {
+            addMessage('error', `Command not found: ${cmd}. Not connected to a server.`);
+        }
+
+        dispatch({ type: actions.ADD_TO_HISTORY, payload: command });
+        dispatch({ type: actions.SET_COMMAND, payload: '' });
+    };
+
 
     const addNotification = (notification) => {
         dispatch({ type: actions.ADD_NOTIFICATION, payload: notification });
@@ -366,7 +367,7 @@ export default function useTerminalActions(appStateRef) { // Renamed parameter f
         state,
         addMessage, // Return the defined addMessage
         executeCommand,
-        handleInputChange,
+        handleInputChange, // Now defined earlier
         dispatch, // Also return dispatch as App.js might need it for other actions
         updateCommandsSugestions,
         addNotification

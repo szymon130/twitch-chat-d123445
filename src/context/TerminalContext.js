@@ -33,7 +33,7 @@ const saveLinesToLocalStorage = (lines) => {
 const initialFullLines = loadLinesFromLocalStorage();
 
 const initialState = {
-    notifications: [],
+    // notifications: [], // Removed
     lines: initialFullLines, // Full history of lines up to MAX_MESSAGES_IN_LOCAL_STORAGE
     displayedLines: initialFullLines.slice(Math.max(initialFullLines.length - INITIAL_DISPLAY_MESSAGES, 0)), // Only show last 30 initially
     bufferedLines: [], // New messages buffered when not scrolled to bottom
@@ -75,8 +75,8 @@ export const actions = {
     DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL: 'DELETE_CHANNEL_AVAILABLE_COMMANDS_CHANNEL',
     SET_ACTIVE_CHANNEL: 'SET_ACTIVE_CHANNEL',
     SET_AVAILABLE_EMOTES: 'SET_AVAILABLE_EMOTES',
-    ADD_NOTIFICATION: 'ADD_NOTIFICATION',
-    REMOVE_NOTIFICATION: 'REMOVE_NOTIFICATION',
+    // ADD_NOTIFICATION: 'ADD_NOTIFICATION', // Removed
+    // REMOVE_NOTIFICATION: 'REMOVE_NOTIFICATION', // Removed
     SET_USER_DATA: 'SET_USER_DATA',
     DELETE_USER_DATA: 'DELETE_USER_DATA',
     SET_SCROLLED_TO_BOTTOM: 'SET_SCROLLED_TO_BOTTOM',
@@ -148,10 +148,10 @@ function reducer(state, action) {
             }
             return { ...state, availableCommandsChannel: updatedCommands };
         }
-        case 'ADD_NOTIFICATION':
-            return { ...state, notifications: [...state.notifications, action.payload] };
-        case 'REMOVE_NOTIFICATION':
-            return { ...state, notifications: state.notifications.filter(n => n.id !== action.payload) };
+        // case 'ADD_NOTIFICATION': // Removed
+        //     return { ...state, notifications: [...state.notifications, action.payload] };
+        // case 'REMOVE_NOTIFICATION': // Removed
+        //     return { ...state, notifications: state.notifications.filter(n => n.id !== action.payload) };
         case 'SET_USER_DATA':
             return {
                 ...state,

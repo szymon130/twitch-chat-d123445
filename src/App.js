@@ -1,6 +1,7 @@
 // src/App.js
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { debounce } from 'lodash';
 import SuggestionsList from './components/SuggestionsList';
 import TerminalLine from './components/TerminalLine';
 import WebSocketComponent from './components/WebSocket/WebSocketComponent';
@@ -8,16 +9,17 @@ import handleFnCall from './fnHandlers/_index';
 import { TerminalProvider } from './context/TerminalContext';
 import useTerminalActions from './hooks/useTerminalActions';
 import { actions } from './context/TerminalContext';
-import NotificationCarousel from './NotificationCarousel';
+// import NotificationCarousel from './NotificationCarousel'; // Removed import
 
 const INITIAL_DISPLAY_MESSAGES = 30; // Number of messages to display initially
+const SCROLL_TOLERANCE = 20; // Tolerance in pixels for considering the scroll at the bottom
 
 function TerminalApp() {
   // stateRef must be defined before useTerminalActions call if passed
   const stateRef = useRef(null); // Initialize ref
 
   // Destructure addMessage directly from useTerminalActions hook, passing stateRef
-  const { state, addMessage, executeCommand, handleInputChange, dispatch, addNotification } =
+  const { state, addMessage, executeCommand, handleInputChange, dispatch } = // Removed addNotification
     useTerminalActions(stateRef);
 
   // Update ref on every render for latest state snapshot, AFTER 'state' is initialized
@@ -36,6 +38,15 @@ function TerminalApp() {
   });
 
   const [initialAutoConnect, setInitialAutoConnect] = useState(false);
+  // New state for "Load More" button visibility and count
+  const [showLoadMore, setShowLoadMore] = useState(false);
+  const [messagesToLoadCount, setMessagesToLoadCount] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false); // New state for loading animation
+
+  // States for reply functionality
+  const [isSelectingReply, setIsSelectingReply] = useState(false);
+  const [selectedMessageIndex, setSelectedMessageIndex] = useState(-1);
+  const [replyingToMessageId, setReplyingToMessageId] = useState(null); // Store ID of message being replied to
 
   useEffect(() => {
     window.__terminalCommandRef = state.command;
@@ -78,7 +89,9 @@ function TerminalApp() {
   // Scroll to bottom when displayedLines changes AND when isScrolledToBottom is true
   useEffect(() => {
     if (state.isScrolledToBottom) {
-      terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      if (terminalWindowRef.current) {
+        terminalWindowRef.current.scrollTop = terminalWindowRef.current.scrollHeight;
+      }
     }
   }, [state.displayedLines, state.isScrolledToBottom]);
 
@@ -87,6 +100,10 @@ function TerminalApp() {
     const handleClick = (e) => {
       if (formRef.current && !formRef.current.contains(e.target)) {
         dispatch({ type: actions.SET_SHOW_SUGGESTIONS, payload: false });
+        // Also clear reply selection if clicking outside
+        setIsSelectingReply(false);
+        setSelectedMessageIndex(-1);
+        setReplyingToMessageId(null); // Clear accepted reply highlight
       }
       inputRef.current?.focus();
     };
@@ -97,6 +114,7 @@ function TerminalApp() {
   }, [dispatch]);
 
   const handleKeyDown = (e) => {
+    // If suggestions are shown, prioritize them
     if (state.showSuggestions && state.suggestions.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -122,77 +140,187 @@ function TerminalApp() {
         dispatch({ type: actions.SET_SHOW_SUGGESTIONS, payload: false });
       }
     } else {
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (state.historyIndex < state.commandHistory.length - 1) {
-          const newIndex = state.historyIndex + 1;
-          dispatch({ type: actions.SET_HISTORY_INDEX, payload: newIndex });
-          dispatch({ type: actions.SET_COMMAND, payload: state.commandHistory[newIndex] });
+      // Handle reply selection with Shift + Arrows
+      if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        e.preventDefault(); // Prevent actual scrolling of the terminal window
+        setIsSelectingReply(true);
+        setReplyingToMessageId(null); // Clear accepted reply highlight when selecting again
+        const maxIndex = state.displayedLines.length - 1;
+        let newIndex = selectedMessageIndex;
+
+        if (selectedMessageIndex === -1) { // If no message is selected yet, start from the last message
+          newIndex = maxIndex;
+        } else if (e.key === 'ArrowUp') {
+          newIndex = Math.max(0, selectedMessageIndex - 1);
+        } else if (e.key === 'ArrowDown') {
+          newIndex = Math.min(maxIndex, selectedMessageIndex + 1);
         }
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (state.historyIndex > 0) {
-          const newIndex = state.historyIndex - 1;
-          dispatch({ type: actions.SET_HISTORY_INDEX, payload: newIndex });
-          dispatch({ type: actions.SET_COMMAND, payload: state.commandHistory[newIndex] });
+
+        // Only allow selection of 'user_message_data' types for reply
+        let validIndexFound = false;
+        let originalNewIndex = newIndex; // Store original calculated index
+
+        // Search for the nearest valid message
+        if (e.key === 'ArrowUp') {
+          for (let i = originalNewIndex; i >= 0; i--) {
+            if (state.displayedLines[i]?.rehydrateType === 'user_message_data') {
+              newIndex = i;
+              validIndexFound = true;
+              break;
+            }
+          }
+        } else { // ArrowDown or initial selection
+          for (let i = originalNewIndex; i <= maxIndex; i++) {
+            if (state.displayedLines[i]?.rehydrateType === 'user_message_data') {
+              newIndex = i;
+              validIndexFound = true;
+              break;
+            }
+          }
+        }
+
+        if (validIndexFound) {
+          setSelectedMessageIndex(newIndex);
         } else {
-          dispatch({ type: actions.SET_HISTORY_INDEX, payload: -1 });
-          dispatch({ type: actions.SET_COMMAND, payload: '' });
+          // If no valid message found, reset selection
+          setIsSelectingReply(false);
+          setSelectedMessageIndex(-1);
         }
-      } else if (e.key === 'Enter') {
+
+      } else if (isSelectingReply && (e.key === 'Enter' || e.key === 'Tab')) {
         e.preventDefault();
-        const submitButton = document.getElementById('submit-button');
-        if (submitButton) submitButton.click();
+        if (selectedMessageIndex !== -1) {
+          const selectedLine = state.displayedLines[selectedMessageIndex];
+          if (selectedLine?.rehydrateType === 'user_message_data') {
+            const { user, channel, tags } = selectedLine.rehydrateData;
+            const username = tags['display-name'] || user;
+            const messageId = tags.id;
+
+            // Pre-fill the command line with /say #channel @username
+            // Message ID is NOT placed in the textarea, but saved in state
+            dispatch({
+              type: actions.SET_COMMAND,
+              payload: `/say #${channel} @${username} `
+            });
+            setReplyingToMessageId(messageId); // Save message ID for sending
+          }
+        }
+        setIsSelectingReply(false); // Exit reply selection mode
+        setSelectedMessageIndex(-1);
+      } else if (isSelectingReply && e.key === 'Escape') {
+        e.preventDefault();
+        setIsSelectingReply(false); // Cancel reply selection
+        setSelectedMessageIndex(-1);
+        setReplyingToMessageId(null); // Clear accepted reply highlight
+      } else {
+        // Normal command history navigation
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (state.historyIndex < state.commandHistory.length - 1) {
+            const newIndex = state.historyIndex + 1;
+            dispatch({ type: actions.SET_HISTORY_INDEX, payload: newIndex });
+            dispatch({ type: actions.SET_COMMAND, payload: state.commandHistory[newIndex] });
+          }
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (state.historyIndex > 0) {
+            const newIndex = state.historyIndex - 1;
+            dispatch({ type: actions.SET_HISTORY_INDEX, payload: newIndex });
+            dispatch({ type: actions.SET_COMMAND, payload: state.commandHistory[newIndex] });
+          } else {
+            dispatch({ type: actions.SET_HISTORY_INDEX, payload: -1 });
+            dispatch({ type: actions.SET_COMMAND, payload: '' });
+          }
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          const submitButton = document.getElementById('submit-button');
+          if (submitButton) submitButton.click();
+        }
       }
     }
   };
 
+
   const removeNotification = useCallback((id) => {
-    dispatch({ type: actions.REMOVE_NOTIFICATION, payload: id });
-  }, [dispatch]);
+    // dispatch({ type: actions.REMOVE_NOTIFICATION, payload: id }); // Removed
+  }, []); // Removed dispatch from dependencies, as it's not used here anymore
 
-  // handleScroll uses stateRef.current and is already correctly set up with useCallback.
-  const handleScroll = useCallback(() => {
+  const handleLoadMoreClick = useCallback(() => {
+    setIsLoadingMore(true); // Start loading animation
     const terminalWindow = terminalWindowRef.current;
-    if (terminalWindow) {
-      const { scrollTop, scrollHeight, clientHeight } = terminalWindow;
-      const isAtBottom = scrollHeight - scrollTop <= clientHeight + 1; // +1 for a small tolerance
+    if (terminalWindow && state.displayedLines.length < state.lines.length) {
+      const currentDisplayedCount = state.displayedLines.length;
+      const remainingHistoryCount = state.lines.length - currentDisplayedCount;
+      const messagesToLoad = Math.min(INITIAL_DISPLAY_MESSAGES, remainingHistoryCount);
 
-      if (isAtBottom !== stateRef.current.isScrolledToBottom) {
-        dispatch({ type: actions.SET_SCROLLED_TO_BOTTOM, payload: isAtBottom });
-      }
+      if (messagesToLoad > 0) {
+        const startIndex = state.lines.length - currentDisplayedCount - messagesToLoad;
+        const newMessages = state.lines.slice(startIndex, startIndex + messagesToLoad);
+        dispatch({ type: actions.PREPEND_LINES, payload: newMessages });
 
-      // If scrolled to bottom and there are buffered messages, display them
-      if (isAtBottom && stateRef.current.bufferedLines.length > 0) {
-        dispatch({
-          type: actions.SET_DISPLAYED_LINES,
-          payload: [...stateRef.current.displayedLines, ...stateRef.current.bufferedLines]
+        // Maintain scroll position
+        const oldScrollHeight = terminalWindow.scrollHeight;
+        requestAnimationFrame(() => {
+          if (terminalWindowRef.current) {
+            terminalWindowRef.current.scrollTop = terminalWindowRef.current.scrollHeight - oldScrollHeight;
+          }
+          setIsLoadingMore(false); // End loading animation after scroll adjustment
         });
-        dispatch({ type: actions.CLEAR_BUFFERED_LINES });
+      } else {
+        setIsLoadingMore(false); // End loading if no messages to load
       }
+    } else {
+      setIsLoadingMore(false); // End loading if no messages to load
+    }
+    setShowLoadMore(false); // Hide the button after loading
+  }, [state.displayedLines, state.lines, dispatch]);
 
-      // Lazy loading: if scrolled near the top
-      if (scrollTop === 0 && state.displayedLines.length < state.lines.length) {
-        const currentDisplayedCount = state.displayedLines.length;
-        const remainingHistoryCount = state.lines.length - currentDisplayedCount;
-        const messagesToLoad = Math.min(INITIAL_DISPLAY_MESSAGES, remainingHistoryCount);
+  const handleScroll = useCallback(
 
-        if (messagesToLoad > 0) {
-          const startIndex = state.lines.length - currentDisplayedCount - messagesToLoad;
-          const newMessages = state.lines.slice(startIndex, startIndex + messagesToLoad);
-          dispatch({ type: actions.PREPEND_LINES, payload: newMessages });
+    debounce(() => {
+      const terminalWindow = terminalWindowRef.current;
+      if (terminalWindow) {
+        const { scrollTop, scrollHeight, clientHeight } = terminalWindow;
+        // Use SCROLL_TOLERANCE here
+        const isAtBottom = scrollHeight - scrollTop <= clientHeight + SCROLL_TOLERANCE;
 
-          // Keep scroll position relatively stable
-          const oldScrollHeight = scrollHeight;
-          requestAnimationFrame(() => {
-            if (terminalWindowRef.current) {
-              terminalWindowRef.current.scrollTop = terminalWindowRef.current.scrollHeight - oldScrollHeight;
-            }
+        if (isAtBottom !== stateRef.current.isScrolledToBottom) {
+          dispatch({ type: actions.SET_SCROLLED_TO_BOTTOM, payload: isAtBottom });
+        }
+
+        // If scrolled to bottom and there are buffered messages, display them
+        if (isAtBottom && stateRef.current.bufferedLines.length > 0) {
+          dispatch({
+            type: actions.SET_DISPLAYED_LINES,
+            payload: [...stateRef.current.displayedLines, ...stateRef.current.bufferedLines]
           });
+          dispatch({ type: actions.CLEAR_BUFFERED_LINES });
+        }
+
+        // Show "Load More" button if scrolled to top and there's more history
+        if (scrollTop === 0 && state.displayedLines.length < state.lines.length) {
+          const remainingHistoryCount = state.lines.length - state.displayedLines.length;
+          setMessagesToLoadCount(Math.min(INITIAL_DISPLAY_MESSAGES, remainingHistoryCount));
+          setShowLoadMore(true);
+        } else {
+          setShowLoadMore(false);
         }
       }
+    }, 200), [state.displayedLines, state.lines, dispatch]);
+
+  // Override executeCommand from useTerminalActions to append message ID
+  const customExecuteCommand = useCallback((command, wsMethods) => {
+    let finalPayload = command;
+    let cmd = command.split(' ')[0];
+
+    if (cmd === '/say' && replyingToMessageId) {
+      // Append the message ID to the payload for the backend
+      finalPayload = `${command}\n\n;${replyingToMessageId}`;
+      setReplyingToMessageId(null); // Clear the reply ID after it's used
     }
-  }, [state.displayedLines, state.lines, dispatch]);
+    // Corrected: Pass finalPayload as the command to the original executeCommand
+    executeCommand(finalPayload, wsMethods); // Call the original executeCommand with the modified command/payload
+  }, [executeCommand, replyingToMessageId]);
 
 
   return (
@@ -221,7 +349,7 @@ function TerminalApp() {
                 addMessage: addMessage, // Use the addMessage from the hook
                 dispatch,
                 state: stateRef.current,
-                addNotification
+                // addNotification // Removed
               }
             );
 
@@ -246,10 +374,10 @@ function TerminalApp() {
     >
       {(wsMethods) => (
         <div className="text-white h-screen w-screen flex flex-col font-sans p-0 sm:p-4" style={{ backgroundColor: "#1f1f23" }}>
-          <NotificationCarousel
+          {/* <NotificationCarousel // Removed
             notifications={state.notifications}
             removeNotification={removeNotification}
-          />
+          /> */}
           <div className="bg-black bg-opacity-50 rounded-lg shadow-2xl flex flex-col flex-grow h-full overflow-hidden">
             {/* Header */}
             <div className="p-3 flex items-center border-b border-gray-700" style={{ backgroundColor: "#101011ff" }}>
@@ -266,7 +394,26 @@ function TerminalApp() {
             </div>
 
             {/* Output */}
-            <div id="terminal-window" ref={terminalWindowRef} className="flex-grow overflow-y-auto" style={{ overflowX: 'hidden' }} onScroll={handleScroll}>
+            <div
+              id="terminal-window"
+              ref={terminalWindowRef}
+              className={`flex-grow overflow-y-auto ${!state.isScrolledToBottom ? 'auto-scroll-disabled' : ''}`}
+              style={{ overflowX: 'hidden' }}
+              onScroll={handleScroll}
+            >
+              {showLoadMore && messagesToLoadCount > 0 && (
+                <div className="text-center py-2">
+                  <button
+                    onClick={handleLoadMoreClick}
+                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs"
+                  >
+                    Load {messagesToLoadCount} more messages
+                  </button>
+                </div>
+              )}
+              {isLoadingMore && (
+                <div className="text-center text-gray-400 py-2 text-sm">Loading...</div>
+              )}
               {state.displayedLines.map((line, index) => (
                 <TerminalLine
                   key={index}
@@ -277,6 +424,9 @@ function TerminalApp() {
                   rehydrateData={line.rehydrateData} // Pass rehydrateData
                   dispatch={dispatch} // Pass dispatch
                   state={state} // Pass state
+                  isBufferedNew={line.isBufferedNew} // Pass isBufferedNew
+                  isSelected={isSelectingReply && selectedMessageIndex === index} // Pass isSelected prop for dotted border
+                  isReplyingAccepted={replyingToMessageId === line.rehydrateData?.tags?.id} // Pass for yellowish background
                 />
               ))}
               <div ref={terminalEndRef} />
@@ -299,7 +449,7 @@ function TerminalApp() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  executeCommand(state.command, wsMethods);
+                  customExecuteCommand(state.command, wsMethods); // Use customExecuteCommand
                 }}
                 className="flex items-center font-mono text-sm"
                 id="input-form"

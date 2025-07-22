@@ -1,4 +1,4 @@
-        /* Apply Inter font globally */
+/* Apply Inter font globally */
         * {
           box-sizing: border-box;
         }
@@ -15,12 +15,20 @@
           --twitch-purple: #9147ff;
           /* Twitch's signature purple */
           --twitch-light-purple: #a970ff;
-          --twitch-light-purple-alpha: #a970ff10
-            /* A slightly lighter purple for highlights */
-            --twitch-gray-light: #2c2c31;
+          --twitch-light-purple-alpha: #a970ff10;
+          /* A slightly lighter purple for highlights */
+          --twitch-gray-light: #2c2c31;
           /* Lighter gray for scrollbar track */
           --twitch-gray-dark: #1f1f23;
           /* Darker gray for scrollbar thumb */
+
+          /* Default scrollbar colors (purple-grayish) */
+          --scrollbar-thumb-color: #6a5acd; /* A muted purple-grayish */
+          --scrollbar-track-color: #3a3a40; /* A slightly lighter grayish-purple */
+
+          /* Disabled auto-scroll scrollbar colors (grayish) */
+          --scrollbar-thumb-color-disabled: #555555;
+          --scrollbar-track-color-disabled: #333333;
         }
 
         /* Global Scrollbar Styles */
@@ -36,20 +44,17 @@
 
         /* Scrollbar track (the background area) */
         ::-webkit-scrollbar-track {
-          background: var(--twitch-gray-light);
-          /* Light gray/dark purple for the track */
+          background: var(--scrollbar-track-color); /* Default track color */
           border-radius: 10px;
           /* Rounded corners for the track */
         }
 
         /* Scrollbar thumb (the draggable part) */
         ::-webkit-scrollbar-thumb {
-          background: var(--twitch-purple);
-          /* Twitch purple for the thumb */
+          background: var(--scrollbar-thumb-color); /* Default thumb color */
           border-radius: 10px;
           /* Rounded corners for the thumb */
-          border: 3px solid var(--twitch-gray-light);
-          /* A border to create a gap from the track */
+          border: 3px solid var(--scrollbar-track-color); /* Border to match default track color */
         }
 
         /* Scrollbar thumb on hover */
@@ -62,6 +67,16 @@
         ::-webkit-scrollbar-corner {
           background: var(--twitch-dark-bg);
           /* Match the main background */
+        }
+
+        /* Styles for scrollbar when auto-scroll is disabled */
+        .auto-scroll-disabled::-webkit-scrollbar-track {
+          background: var(--scrollbar-track-color-disabled);
+        }
+
+        .auto-scroll-disabled::-webkit-scrollbar-thumb {
+          background: var(--scrollbar-thumb-color-disabled);
+          border: 3px solid var(--scrollbar-track-color-disabled);
         }
 
         /* Example container to demonstrate scrollbars */
