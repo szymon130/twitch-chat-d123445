@@ -21,27 +21,9 @@ const loadLinesFromLocalStorage = () => {
 const saveLinesToLocalStorage = (lines) => {
     try {
         const linesToSave = lines.slice(Math.max(lines.length - MAX_MESSAGES_IN_LOCAL_STORAGE, 0));
-        // Map over linesToSave to handle content that might be functions or JSX elements
-        const serializableLines = linesToSave.map(line => {
-            let serializableContent = line.content;
-            // Check for React elements (JSX)
-            if (React.isValidElement(line.content)) {
-                // Convert JSX content to a placeholder string for storage
-                // For more advanced use cases, you might want a custom serializer for JSX
-                serializableContent = `[JSX: ${line.type} message]`;
-            } else if (typeof line.content === 'function') {
-                // Convert function content to a placeholder string for storage
-                serializableContent = `[Function: ${line.type} message]`;
-            } else if (line.content === undefined) {
-                 // Ensure undefined content is also handled as an empty string or null
-                serializableContent = '';
-            }
-            return {
-                type: line.type,
-                content: serializableContent // Store the serializable version
-            };
-        });
-        const serializedLines = JSON.stringify(serializableLines);
+        // No special content serialization needed here.
+        // rehydrateType and rehydrateData will contain serializable JSON objects.
+        const serializedLines = JSON.stringify(linesToSave);
         localStorage.setItem('terminalLines', serializedLines);
     } catch (error) {
         console.error("Error saving to local storage:", error);
@@ -97,13 +79,22 @@ export const actions = {
     REMOVE_NOTIFICATION: 'REMOVE_NOTIFICATION',
     SET_USER_DATA: 'SET_USER_DATA',
     DELETE_USER_DATA: 'DELETE_USER_DATA',
-    SET_SCROLLED_TO_BOTTOM: 'SET_SCROLLED_TO_BOTTOM', // New action
-    SET_DISPLAYED_LINES: 'SET_DISPLAYED_LINES',     // New action
-    ADD_BUFFERED_LINE: 'ADD_BUFFERED_LINE',         // New action
-    CLEAR_BUFFERED_LINES: 'CLEAR_BUFFERED_LINES',   // New action
-    PREPEND_LINES: 'PREPEND_LINES', // New action for lazy loading
+    SET_SCROLLED_TO_BOTTOM: 'SET_SCROLLED_TO_BOTTOM',
+    SET_DISPLAYED_LINES: 'SET_DISPLAYED_LINES',
+    ADD_BUFFERED_LINE: 'ADD_BUFFERED_LINE',
+    CLEAR_BUFFERED_LINES: 'CLEAR_BUFFERED_LINES',
+    PREPEND_LINES: 'PREPEND_LINES',
 };
 
+/**
+ * @typedef {{ type: string, content: string | JSX.Element | function, rehydrateType?: string, rehydrateData?: any }} TerminalLine
+ */
+
+/**
+ * @param {TerminalState} state
+ * @param {{ type: string, payload: TerminalLine }} action
+ * @returns {TerminalState}
+ */
 function reducer(state, action) {
     switch (action.type) {
         case 'ADD_LINE': {
@@ -130,7 +121,7 @@ function reducer(state, action) {
         case 'SET_SHOW_SUGGESTIONS':
             return { ...state, showSuggestions: action.payload };
         case 'CLEAR_LINES':
-            saveLinesToLocalStorage([]); // Clear local storage too
+            saveLinesToLocalStorage([]);
             return { ...state, lines: [], displayedLines: [], bufferedLines: [] };
         case 'SET_AVAILABLE_COMMANDS_CHANNEL':
             return {
@@ -185,6 +176,7 @@ function reducer(state, action) {
 
 const dummyDispatch = () => { };
 
+/** @type {{ state: TerminalState, dispatch: React.Dispatch<TerminalAction>, actions: TerminalActions }} */
 const defaultContextValue = {
     state: initialState,
     dispatch: dummyDispatch,

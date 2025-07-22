@@ -1,4 +1,5 @@
 // src/App.js
+
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import SuggestionsList from './components/SuggestionsList';
 import TerminalLine from './components/TerminalLine';
@@ -147,24 +148,29 @@ function TerminalApp() {
     dispatch({ type: actions.REMOVE_NOTIFICATION, payload: id });
   }, [dispatch]);
 
-  // Custom addMessage function to handle buffering
-  const addMessageWithBuffering = useCallback((type, content) => {
+  // Custom addMessage function to handle buffering and structured message payloads
+  const addMessageWithBuffering = useCallback((type, content, rehydrateType = null, rehydrateData = null) => {
     const currentState = stateRef.current; // Use the ref for the latest state
 
+    const linePayload = { type, content };
+    if (rehydrateType) {
+        linePayload.rehydrateType = rehydrateType;
+        linePayload.rehydrateData = rehydrateData;
+    }
+
     // Always add to the full history (state.lines)
-    dispatch({ type: actions.ADD_LINE, payload: { type, content } });
+    dispatch({ type: actions.ADD_LINE, payload: linePayload });
 
     if (currentState.isScrolledToBottom) {
       // If at bottom, add directly to displayed lines and clear buffer
-      // Ensure the payload passed to SET_DISPLAYED_LINES is an array of {type, content} objects
       dispatch({
         type: actions.SET_DISPLAYED_LINES,
-        payload: [...currentState.displayedLines, { type, content }, ...currentState.bufferedLines] // Corrected: pass {type, content}
+        payload: [...currentState.displayedLines, linePayload, ...currentState.bufferedLines]
       });
       dispatch({ type: actions.CLEAR_BUFFERED_LINES });
     } else {
       // If not at bottom, add to buffer
-      dispatch({ type: actions.ADD_BUFFERED_LINE, payload: { type, content } });
+      dispatch({ type: actions.ADD_BUFFERED_LINE, payload: linePayload });
     }
   }, [dispatch]);
 
@@ -284,7 +290,16 @@ function TerminalApp() {
             {/* Output */}
             <div id="terminal-window" ref={terminalWindowRef} className="flex-grow overflow-y-auto" style={{ overflowX: 'hidden' }} onScroll={handleScroll}>
               {state.displayedLines.map((line, index) => (
-                <TerminalLine key={index} type={line.type} content={line.content} index={index} />
+                <TerminalLine
+                  key={index}
+                  type={line.type}
+                  content={line.content}
+                  index={index}
+                  rehydrateType={line.rehydrateType} // Pass rehydrateType
+                  rehydrateData={line.rehydrateData} // Pass rehydrateData
+                  dispatch={dispatch} // Pass dispatch
+                  state={state} // Pass state
+                />
               ))}
               <div ref={terminalEndRef} />
             </div>

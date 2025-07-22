@@ -1,6 +1,7 @@
 // src/components/TerminalLine.js
 import React from 'react';
 import MessageIcon from './MessageIcon';
+import RehydratedMessage from './RehydratedMessage'; // Import the new component
 
 /**
  * A single line in the terminal output.
@@ -8,9 +9,13 @@ import MessageIcon from './MessageIcon';
  * @param {Object} props - The component props.
  * @param {'success' | 'output' | 'command' | 'frontend-error' | 'message' | 'system' | 'error'| 'plusone'| 'minusone'| 'sword' | 'none'} props.type - The type of the terminal line, used for styling and behavior.
  * @param {string | JSX.Element | function} props.content - The content to display, can be plain text, a JSX element, or a function that returns JSX.
+ * @param {string} props.rehydrateType - Optional. Type identifier for rehydrating content.
+ * @param {any} props.rehydrateData - Optional. Data needed to rehydrate content.
+ * @param {function} props.dispatch - The dispatch function from TerminalContext.
+ * @param {object} props.state - The state from TerminalContext.
  * @returns {JSX.Element} The rendered terminal line.
  */
-const TerminalLine = ({ type, content, index }) => {
+const TerminalLine = ({ type, content, index, rehydrateType, rehydrateData, dispatch, state }) => {
   const typeClass = {
     error: 'text-red-400',
     system: 'text-blue-400',
@@ -29,19 +34,26 @@ const TerminalLine = ({ type, content, index }) => {
 
   const icon = type === 'command' ? <span className="text-cyan-400">$</span> : <MessageIcon type={type} />;
 
+  // Determine the content to render based on rehydration type
+  let renderedContent;
+  if (rehydrateType) {
+    // Pass the entire line object for rehydration
+    renderedContent = <RehydratedMessage line={{ type, content, rehydrateType, rehydrateData }} dispatch={dispatch} state={state} />;
+  } else if (typeof content === 'function') {
+    // For in-session dynamic content (like /debug output during the current session)
+    renderedContent = content(icon);
+  } else {
+    // For simple string content or directly provided JSX
+    renderedContent = <>{icon} {content}</>;
+  }
+
+
   return (
     <div
       className={`terminal-line text-sm ${typeClass[type]} break-all`}
       style={{ backgroundColor: index % 2 === 0 ? '#ffffff08' : 'transparent' }}
     >
-      {/* Corrected: Check if content is a function first, then render accordingly */}
-      {typeof content === 'function' ? (
-        <>{content(icon)}</>
-      ) : (
-        <div className="px-2 py-1">
-          {icon} {content}
-        </div>
-      )}
+      {renderedContent}
     </div>
   );
 };

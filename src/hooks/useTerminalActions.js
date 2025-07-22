@@ -1,6 +1,5 @@
+// src/hooks/useTerminalActions.js
 import { useTerminal } from '../context/TerminalContext';
-// import applyCharacterLimit from '../helpers/applyCharacterLimit'
-import JSONViewer from '../components/JSONViewer';
 
 const accesMap = new Map();
 accesMap.set(100, { txt: '<span style="color:  #eeeeeeff;">Everyone</span>', level: 0 });
@@ -23,10 +22,11 @@ export default function useTerminalActions() {
         })
     }
 
-    const addMessage = (type, content) => {
+    // Modified addMessage signature to include rehydration info
+    const addMessage = (type, content, rehydrateType = null, rehydrateData = null) => {
         dispatch({
             type: actions.ADD_LINE,
-            payload: { type, content }
+            payload: { type, content, rehydrateType, rehydrateData }
         });
     };
 
@@ -49,11 +49,12 @@ export default function useTerminalActions() {
                         </ul>
                     </>
                 );
-                addMessage('output', helpText);
+                addMessage('output', helpText); // Simple JSX content
                 break;
 
             case '/clear':
                 dispatch({ type: actions.CLEAR_LINES });
+                addMessage('system', 'Terminal cleared.'); // Added explicit message
                 break;
 
             case '/refresh':
@@ -83,11 +84,9 @@ export default function useTerminalActions() {
                 break;
 
             case '/debug':
-                addMessage('output', (icon) => (
-                    <div className="max-h-80 overflow-auto bg-gray-800 p-2 rounded">
-                        <JSONViewer data={state} />
-                    </div>
-                ));
+                // For debug, we don't rehydrate the full state as it's dynamic.
+                // It will show a placeholder string after refresh.
+                addMessage('output', '[Debug Output]', 'debug_output', null);
                 break;
 
 
@@ -144,7 +143,7 @@ export default function useTerminalActions() {
             }
         }
 
-        addMessage('command', command);
+        addMessage('command', command); // Simple string command
         dispatch({ type: actions.SET_SHOW_SUGGESTIONS, payload: false });
 
         const [cmd, ...args] = command.trim().split(' ');
@@ -158,7 +157,7 @@ export default function useTerminalActions() {
             let success = false;
             if (cmd[0] !== '/' && state.activeChannel) {
                 success = wsMethods.sendMessage({ command: `/say`, payload: `#${state.activeChannel} ${command}` });
-                if (success) addMessage('system', `TY -> [${state.activeChannel}] ${command}`);
+                if (success) addMessage('system', `TY -> [${state.activeChannel}] ${command}`); // Simple string content
             }
             else success = wsMethods.sendMessage({ command: cmd, payload });
             if (!success) {
@@ -323,7 +322,8 @@ export default function useTerminalActions() {
                         cmd: `!${cmd}`,
                         properties: false
                     }
-                });
+                }
+                );
             }
         }
 

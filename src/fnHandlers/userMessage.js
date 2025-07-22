@@ -1,5 +1,4 @@
-import { Message } from '../helpers/Message'
-
+// src/fnHandlers/userMessage.js
 
 /**
  * Destructured Twitch chat message data.
@@ -37,9 +36,9 @@ import { Message } from '../helpers/Message'
  */
 
 
-export default function handleUserMessage(data, { addMessage, state, dispatch }) {
+export default function handleUserMessage(data, { addMessage }) {
     data.message_part = data.message_part.replaceAll('\u0001', "");
-    const { user, channel, formatted_time, message_part, channel_color, user_color, tags } = data;
+    // const { user, channel, formatted_time, message_part, channel_color, user_color, tags } = data; // Destructuring not needed directly here
 
     if (data.is_channel_command) {
         addMessage('channel_command', {
@@ -47,13 +46,9 @@ export default function handleUserMessage(data, { addMessage, state, dispatch })
             command: data.command
         });
     } else {
-        if (tags['source-room-id'] !== undefined && tags['room-id'] !== tags['source-room-id']) return;
+        if (data.tags['source-room-id'] !== undefined && data.tags['room-id'] !== data.tags['source-room-id']) return;
 
-        const message = (icon) => <>
-            {Message({
-                user, channel, formatted_time, message_part, channel_color, user_color, tags, dispatch, state
-            })}
-        </>;
-        addMessage('output', message);
+        // Pass the raw data object for rehydration
+        addMessage('output', null, 'user_message_data', data);
     }
 }
