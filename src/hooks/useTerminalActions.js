@@ -1,5 +1,7 @@
 // src/hooks/useTerminalActions.js
 import { useTerminal } from '../context/TerminalContext';
+// import applyCharacterLimit from '../helpers/applyCharacterLimit'
+import JSONViewer from '../components/JSONViewer';
 
 const accesMap = new Map();
 accesMap.set(100, { txt: '<span style="color:  #eeeeeeff;">Everyone</span>', level: 0 });
@@ -49,12 +51,13 @@ export default function useTerminalActions() {
                         </ul>
                     </>
                 );
-                addMessage('output', helpText); // Simple JSX content
+                // Pass raw JSX, TerminalContext will convert to string placeholder for localStorage
+                addMessage('output', helpText);
                 break;
 
             case '/clear':
                 dispatch({ type: actions.CLEAR_LINES });
-                addMessage('system', 'Terminal cleared.'); // Added explicit message
+                addMessage('system', 'Terminal cleared.'); // Simple string message
                 break;
 
             case '/refresh':
@@ -63,9 +66,9 @@ export default function useTerminalActions() {
 
             case '/connect':
                 if (wsMethods.isConnected) {
-                    addMessage('error', 'Already connected.');
+                    addMessage('error', 'Already connected.'); // Simple string message
                 } else {
-                    addMessage('system', 'Connecting to WebSocket...');
+                    addMessage('system', 'Connecting to WebSocket...'); // Simple string message
                     wsMethods.connect();
                 }
                 break;
@@ -74,28 +77,31 @@ export default function useTerminalActions() {
                 if (wsMethods.isConnected) {
                     wsMethods.disconnect();
                 } else {
-                    addMessage('error', 'Not connected.');
+                    addMessage('error', 'Not connected.'); // Simple string message
                 }
                 break;
 
             case '/status':
                 const statusText = wsMethods.isConnected ? 'Connected' : 'Disconnected';
-                addMessage('system', `Connection status: ${statusText}`);
+                addMessage('system', `Connection status: ${statusText}`); // Simple string message
                 break;
 
             case '/debug':
-                // For debug, we don't rehydrate the full state as it's dynamic.
-                // It will show a placeholder string after refresh.
-                addMessage('output', '[Debug Output]', 'debug_output', null);
+                // Pass a function, TerminalContext will convert to string placeholder for localStorage
+                addMessage('output', (icon) => (
+                    <div className="max-h-80 overflow-auto bg-gray-800 p-2 rounded">
+                        <JSONViewer data={state} />
+                    </div>
+                ));
                 break;
 
 
             case '/join':
                 if (cmd === "/join" && (args[0] === "@" || args[0] === undefined) && state.activeChannel) {
-                    addMessage('join', ` -> [${state.activeChannel}]`);
+                    addMessage('join', ` -> [${state.activeChannel}]`); // Simple string message
                     const success = wsMethods.sendMessage({ command: `/join`, payload: `#${state.activeChannel}` });
                     if (!success) {
-                        addMessage('error', 'Failed to send message - connection not ready');
+                        addMessage('error', 'Failed to send message - connection not ready'); // Simple string message
                     }
                     return;
                 }
@@ -113,10 +119,10 @@ export default function useTerminalActions() {
                     const payload = args.join(' ');
                     const success = wsMethods.sendMessage({ command: cmd, payload });
                     if (!success) {
-                        addMessage('error', 'Failed to send message - connection not ready');
+                        addMessage('error', 'Failed to send message - connection not ready'); // Simple string message
                     }
                 } else {
-                    addMessage('error', `Cannot execute '${cmd}'. Not connected to a server.`);
+                    addMessage('error', `Cannot execute '${cmd}'. Not connected to a server.`); // Simple string message
                 }
         }
     };
@@ -138,12 +144,12 @@ export default function useTerminalActions() {
             }
 
             if (charCount > 500) {
-                addMessage('error', `Message exceeds 500 characters (${charCount}/500)`);
+                addMessage('error', `Message exceeds 500 characters (${charCount}/500)`); // Simple string message
                 return;
             }
         }
 
-        addMessage('command', command); // Simple string command
+        addMessage('command', command); // Simple string message
         dispatch({ type: actions.SET_SHOW_SUGGESTIONS, payload: false });
 
         const [cmd, ...args] = command.trim().split(' ');
@@ -157,14 +163,14 @@ export default function useTerminalActions() {
             let success = false;
             if (cmd[0] !== '/' && state.activeChannel) {
                 success = wsMethods.sendMessage({ command: `/say`, payload: `#${state.activeChannel} ${command}` });
-                if (success) addMessage('system', `TY -> [${state.activeChannel}] ${command}`); // Simple string content
+                if (success) addMessage('system', `TY -> [${state.activeChannel}] ${command}`); // Simple string message
             }
             else success = wsMethods.sendMessage({ command: cmd, payload });
             if (!success) {
-                addMessage('error', 'Failed to send command - connection not ready');
+                addMessage('error', 'Failed to send command - connection not ready'); // Simple string message
             }
         } else {
-            addMessage('error', `Command not found: ${cmd}. Not connected to a server.`);
+            addMessage('error', `Command not found: ${cmd}. Not connected to a server.`); // Simple string message
         }
 
         dispatch({ type: actions.ADD_TO_HISTORY, payload: command });

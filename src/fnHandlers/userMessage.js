@@ -1,4 +1,6 @@
 // src/fnHandlers/userMessage.js
+import { Message } from '../helpers/Message'
+
 
 /**
  * Destructured Twitch chat message data.
@@ -36,7 +38,7 @@
  */
 
 
-export default function handleUserMessage(data, { addMessage }) {
+export default function handleUserMessage(data, { addMessage, state, dispatch }) {
     data.message_part = data.message_part.replaceAll('\u0001', "");
     // const { user, channel, formatted_time, message_part, channel_color, user_color, tags } = data; // Destructuring not needed directly here
 

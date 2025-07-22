@@ -34,17 +34,17 @@ const TerminalLine = ({ type, content, index, rehydrateType, rehydrateData, disp
 
   const icon = type === 'command' ? <span className="text-cyan-400">$</span> : <MessageIcon type={type} />;
 
-  // Determine the content to render based on rehydration type
   let renderedContent;
   if (rehydrateType) {
-    // Pass the entire line object for rehydration
-    renderedContent = <RehydratedMessage line={{ type, content, rehydrateType, rehydrateData }} dispatch={dispatch} state={state} />;
+      // If a rehydrateType is specified, delegate to RehydratedMessage
+      renderedContent = <RehydratedMessage line={{ type, content, rehydrateType, rehydrateData }} dispatch={dispatch} state={state} />;
   } else if (typeof content === 'function') {
-    // For in-session dynamic content (like /debug output during the current session)
-    renderedContent = content(icon);
+      // If content is a function (e.g., /debug output during the current session), call it.
+      // This path is taken for messages generated in the current session before being saved/reloaded.
+      renderedContent = content(icon);
   } else {
-    // For simple string content or directly provided JSX
-    renderedContent = <>{icon} {content}</>;
+      // For all other cases (plain strings, or string placeholders from localStorage for JSX/functions)
+      renderedContent = content;
   }
 
 
@@ -53,7 +53,9 @@ const TerminalLine = ({ type, content, index, rehydrateType, rehydrateData, disp
       className={`terminal-line text-sm ${typeClass[type]} break-all`}
       style={{ backgroundColor: index % 2 === 0 ? '#ffffff08' : 'transparent' }}
     >
-      {renderedContent}
+      <div className="px-2 py-1">
+        {icon} {renderedContent}
+      </div>
     </div>
   );
 };

@@ -196,13 +196,13 @@ function TerminalApp() {
 
       // Lazy loading: if scrolled near the top
       if (scrollTop === 0 && stateRef.current.displayedLines.length < stateRef.current.lines.length) {
-        const currentDisplayedCount = stateRef.current.displayedLines.length;
-        const remainingHistoryCount = stateRef.current.lines.length - currentDisplayedCount;
+        const currentDisplayedCount = state.displayedLines.length; // Use `state` directly here
+        const remainingHistoryCount = state.lines.length - currentDisplayedCount; // Use `state` directly here
         const messagesToLoad = Math.min(INITIAL_DISPLAY_MESSAGES, remainingHistoryCount);
 
         if (messagesToLoad > 0) {
-          const startIndex = stateRef.current.lines.length - currentDisplayedCount - messagesToLoad;
-          const newMessages = stateRef.current.lines.slice(startIndex, startIndex + messagesToLoad);
+          const startIndex = state.lines.length - currentDisplayedCount - messagesToLoad; // Use `state` directly here
+          const newMessages = state.lines.slice(startIndex, startIndex + messagesToLoad); // Use `state` directly here
           dispatch({ type: actions.PREPEND_LINES, payload: newMessages });
 
           // Keep scroll position relatively stable
@@ -215,7 +215,7 @@ function TerminalApp() {
         }
       }
     }
-  }, [dispatch]);
+  }, [state.displayedLines, state.lines, dispatch]); // Added dependencies to useCallback
 
 
   return (

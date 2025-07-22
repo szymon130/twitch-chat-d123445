@@ -1,4 +1,6 @@
 // src/fnHandlers/channelExited.js
+import { actions } from '../context/TerminalContext';
+// import Image from '../helpers/Image' // No longer needed directly here, handled by RehydratedMessage
 
 export default function handleExited(data, { addMessage }) {
     // Pass the raw data object for rehydration

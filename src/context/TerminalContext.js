@@ -21,9 +21,26 @@ const loadLinesFromLocalStorage = () => {
 const saveLinesToLocalStorage = (lines) => {
     try {
         const linesToSave = lines.slice(Math.max(lines.length - MAX_MESSAGES_IN_LOCAL_STORAGE, 0));
-        // No special content serialization needed here.
-        // rehydrateType and rehydrateData will contain serializable JSON objects.
-        const serializedLines = JSON.stringify(linesToSave);
+        const serializableLines = linesToSave.map(line => {
+            // If rehydrateType exists, we assume rehydrateData is serializable JSON
+            if (line.rehydrateType) {
+                return line;
+            } else {
+                // For other content (simple strings, or JSX/functions without rehydrateType),
+                // convert to a simple string placeholder for storage.
+                let serializableContent = line.content;
+                if (typeof line.content === 'function') {
+                    serializableContent = `[Dynamic Output]`; // Placeholder for functions
+                } else if (React.isValidElement(line.content)) {
+                    serializableContent = `[Component Output]`; // Placeholder for JSX elements
+                }
+                return {
+                    type: line.type,
+                    content: serializableContent
+                };
+            }
+        });
+        const serializedLines = JSON.stringify(serializableLines);
         localStorage.setItem('terminalLines', serializedLines);
     } catch (error) {
         console.error("Error saving to local storage:", error);
