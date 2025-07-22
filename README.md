@@ -53,6 +53,3 @@ A web-based terminal application for interacting with multiple Twitch chats in r
 2.  Open your browser and go to `http://localhost:3000`.
 3.  Use the `/connect` command to connect to the server.
 4.  Type `/help` to see a list of available commands.
-
----
-I hope you find this `README.md` file useful! Let me know if you need any further modifications.
